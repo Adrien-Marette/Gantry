@@ -235,3 +235,7 @@ Scripts/
   Each uses and removes a disposable test item.
 - Real Claude Code smoke test passes against the installed CLI.
 - Debug and release app bundles build successfully; UI checked in light and dark appearance on macOS 27.
+
+## Contributing
+
+Bug reports, feature requests, and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first, and use the issue and pull request templates so reports include what is needed to reproduce them. Report security issues privately through GitHub's Security tab rather than in a public issue.

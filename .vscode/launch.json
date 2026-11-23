@@ -1,0 +1,84 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Gantry}",
+            "name": "Debug Gantry",
+            "target": "Gantry",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Gantry"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Gantry}",
+            "name": "Release Gantry",
+            "target": "Gantry",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Gantry"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Gantry}",
+            "name": "Debug Gantry-plugins",
+            "target": "Gantry-plugins",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Gantry-plugins"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Gantry}",
+            "name": "Release Gantry-plugins",
+            "target": "Gantry-plugins",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Gantry-plugins"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Gantry}",
+            "name": "Debug Gantry",
+            "target": "Gantry",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Gantry"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Gantry}",
+            "name": "Release Gantry",
+            "target": "Gantry",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Gantry"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Gantry}",
+            "name": "Debug Gantry-plugins",
+            "target": "Gantry-plugins",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Gantry-plugins"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Gantry}",
+            "name": "Release Gantry-plugins",
+            "target": "Gantry-plugins",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Gantry-plugins"
+        }
+    ]
+}

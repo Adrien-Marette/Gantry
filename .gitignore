@@ -1,0 +1,13 @@
+.DS_Store
+.build/
+build/
+.swiftpm/
+*.xcodeproj
+xcuserdata/
+DerivedData/
+
+# Local tool state and credentials
+.claude/
+.env
+.env.*
+!.env.example

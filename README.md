@@ -2,7 +2,7 @@
 
 A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid Glass. It runs Claude Code in the background and keeps the conversation, project context, streaming output, tool permissions, and AI provider choice in one calm window instead of a terminal.
 
-**Gantry 0.2.0** adds switchable AI provider profiles, Apple Passwords–backed API keys, code-host plugins, an Extensions & Mods manager, and an appearance control.
+**Gantry 0.3.5** refreshes the interface around a warm neutral palette and Apple's Liquid Glass, and stops hover from scrolling the command pickers.
 
 ![Gantry welcome](docs/screenshot-welcome.jpg)
 
@@ -11,6 +11,11 @@ A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid G
 ![Claude Code permission card](docs/screenshot-permission.jpg)
 
 ![AI providers](docs/screenshot-providers.jpg)
+
+## What's new in 0.3.5
+
+- **Redesigned interface.** Warm neutral surfaces, one SF type scale, and a terracotta accent reserved for the selection rail, live work, focus, and the primary action. The sidebar and floating controls use Apple's real Liquid Glass (`glassEffect`, `GlassEffectContainer`, `.glass` buttons); content surfaces stay flat with hairlines.
+- **Command picker scrolling.** Hovering a palette row highlights it without moving the list. Only keyboard navigation scrolls.
 
 ## What's new in 0.2.0
 
@@ -36,7 +41,7 @@ A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid G
 - **Real tool activity.** Bash, Read, Write, Edit, Task, web, MCP, and other tool calls appear as compact, inspectable rows. Expanded views show commands, file diffs, output, todos, and structured results.
 - **Model-aware cost estimates.** Turn and session costs are calculated from the reported model's published token pricing and actual usage, instead of relying on Claude Code's cost assumptions. Unknown models fall back to the estimate Claude Code reports. These are estimates, not billing data.
 - **Workbench details.** A sidebar for projects and sessions, a command palette (`⌘K`), streaming Markdown with code highlighting and tables, a session inspector, and a model-aware estimated usage view.
-- **A design that belongs on macOS.** SF typography, an adaptive warm canvas, system/light/dark appearance, and Liquid Glass for the floating composer, permission sheet, and command palette. macOS 26 or later is required for the glass APIs.
+- **A design that belongs on macOS.** SF typography, a warm neutral canvas, system/light/dark appearance, and Apple's Liquid Glass (`glassEffect` and `GlassEffectContainer`) for the sidebar and the floating controls. Content surfaces stay flat with hairlines instead of imitating glass. macOS 26 or later is required for the glass APIs.
 
 ## Requirements
 
@@ -174,7 +179,7 @@ The **Extensions & Mods** page in the sidebar (or `⇧⌘E`) manages the Claude 
 - **Browse** the marketplaces already configured in Claude Code. Install, enable, disable, update, and uninstall extensions. A trust sheet shows the marketplace and source and warns that extensions can add code that runs with your permissions. If a marketplace declares an install command, Gantry shows the exact command and its SHA-256 and requires a second explicit approval; it never passes `-y` or accepts the command automatically.
 - **Installed** lists plugins with their scope and settings status. Gantry manages user-scope plugins; project/local-scope entries are shown read-only because their state belongs to a project.
 - **Sources** adds marketplace repositories by `owner/repo`, git or HTTPS URL, or local path. Repositories can be favorited and sort first in Browse and Sources. Removing a source does not uninstall plugins already installed from it.
-- **Create** scaffolds a valid mod from a status-line, slash-command, pane, tool-guard, or blank template. It writes `.claude-plugin/plugin.json`, a hooks module, a README, and a starter test for panes; runs `claude plugin validate` (and optionally `claude plugin test`); and can open the folder in Gantry, where the project's chats load it with `--plugin-dir`.
+- **Create** scaffolds a valid mod from a status-line, slash-command, pane, tool-guard, or blank template. It writes `.claude-plugin/plugin.json`, a hooks module, a README, and, when its test option is enabled for a pane, a starter test; runs `claude plugin validate` (and optionally `claude plugin test`); and can open the folder in Gantry, where the project's chats load it with `--plugin-dir`.
 - Installed plugin state belongs to Claude Code's `claude plugin` commands, so extensions installed here also work in the terminal. Gantry stores only favorite marketplace repositories and the last mods folder. After a plugin change, idle Claude processes are recycled and running chats pick up the change after their current turn.
 
 ## Storage and privacy
@@ -202,7 +207,7 @@ The **Extensions & Mods** page in the sidebar (or `⇧⌘E`) manages the Claude 
 - Code-host features need an `origin` remote. When several accounts match a host, the selected account is remembered per project.
 - The MCP bridge is scoped to one repository and requires the bundled `Gantry-plugins` helper, which the provided build script includes. It is only active when the chat's Claude Code process starts with a matching plugin; changing code hosts recycles idle runtimes.
 - No file or image attachments, slash-command picker, MCP elicitation UI, or interactive `AskUserQuestion` dialogs. Standard permission prompts are supported.
-- Files edited via Bash are not listed in the inspector's edited-files list (only Edit/Write/NotebookEdit are).
+- Files edited via Bash are not listed in the inspector's edited-files list (only file-editing tools such as Edit, MultiEdit, Write, and NotebookEdit are).
 - Idle Claude Code processes stay alive while the app is open, which keeps follow-ups fast at the cost of memory.
 - If iCloud Keychain sync is unavailable (for example an ad-hoc local build), keys stay in the local login Keychain.
 - The app is an unofficial client and is not affiliated with Anthropic.
@@ -233,7 +238,7 @@ Sources/GantryCore/
   ModelPricing.swift    Published per-model pricing and model-aware cost estimation
 Sources/Gantry/
   App/                  App entry, observable state, providers, plugins, extensions, MCP bridge lifecycle, conversation orchestration
-  Design/               Palette, glass surfaces, brand mark, shared controls
+  Design/               Palette, type scale, surface and glass helpers, brand mark, shared controls
   Utilities/            Inline Markdown, syntax highlighting, tool and provider presentation
   Views/                Welcome, sidebar, conversation, composer, permissions, inspector, settings, provider editor, code-host settings, repository panel, extensions and mods
 Sources/GantryPluginMCP/
@@ -245,7 +250,7 @@ Scripts/
 
 ## Verification
 
-- `swift test` — tests covering protocol parsing/serialization, runtime permission flow with a fake CLI, provider environment injection, model-aware cost estimation, plugin remote parsing and REST fixtures, MCP tool execution and the Unix-socket bridge, Claude Code plugin catalog/command parsing, favorites, mod scaffolding, Markdown, persistence, and 0.1.0 state migration.
+- `swift test` — tests covering protocol parsing/serialization, runtime permission flow with a fake CLI, provider environment injection, model-aware cost estimation, plugin remote parsing and REST fixtures, MCP tool execution and the Unix-socket bridge, Claude Code plugin catalog/command parsing, favorites, mod scaffolding, Markdown, persistence, and 0.1.0 state compatibility.
 - Extension scaffolding can be validated against the real CLI:
   ```sh
   Gantry_RUN_CLI_INTEGRATION=1 swift test --filter modScaffoldCLIValidation

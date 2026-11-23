@@ -436,6 +436,12 @@ public struct ChatSession: Codable, Hashable, Identifiable, Sendable {
     public var actualModelName: String?
     public var totalCostUSD: Double
     public var providerID: UUID?
+    /// Last cumulative per-model usage reported by Claude Code. Used to price
+    /// the next turn from the difference rather than from its assumptions.
+    public var modelUsage: [String: ModelTokenUsage]?
+    /// Claude Code's own cumulative cost, kept separately from Gantry's
+    /// model-priced estimate so fallback deltas stay on the same scale.
+    public var claudeReportedCostUSD: Double?
 
     public init(
         id: UUID = UUID(),
@@ -450,7 +456,9 @@ public struct ChatSession: Codable, Hashable, Identifiable, Sendable {
         claudeStarted: Bool = false,
         actualModelName: String? = nil,
         totalCostUSD: Double = 0,
-        providerID: UUID? = nil
+        providerID: UUID? = nil,
+        modelUsage: [String: ModelTokenUsage]? = nil,
+        claudeReportedCostUSD: Double? = nil
     ) {
         self.id = id
         self.claudeSessionID = claudeSessionID ?? id
@@ -465,6 +473,8 @@ public struct ChatSession: Codable, Hashable, Identifiable, Sendable {
         self.actualModelName = actualModelName
         self.totalCostUSD = totalCostUSD
         self.providerID = providerID
+        self.modelUsage = modelUsage
+        self.claudeReportedCostUSD = claudeReportedCostUSD
     }
 
     public var firstUserPrompt: String? {
@@ -505,6 +515,9 @@ public struct Project: Codable, Hashable, Identifiable, Sendable {
     public var sessions: [ChatSession]
     /// Optional so state written before code-host plugins decodes unchanged.
     public var pluginID: UUID?
+    /// Optional so state written before mod authoring decodes unchanged.
+    /// When set to this project's folder, its chats launch with `--plugin-dir`.
+    public var devModPath: String?
 
     public init(
         id: UUID = UUID(),
@@ -513,7 +526,8 @@ public struct Project: Codable, Hashable, Identifiable, Sendable {
         createdAt: Date = .now,
         lastOpenedAt: Date = .now,
         sessions: [ChatSession] = [],
-        pluginID: UUID? = nil
+        pluginID: UUID? = nil,
+        devModPath: String? = nil
     ) {
         self.id = id
         self.path = path
@@ -522,6 +536,7 @@ public struct Project: Codable, Hashable, Identifiable, Sendable {
         self.lastOpenedAt = lastOpenedAt
         self.sessions = sessions
         self.pluginID = pluginID
+        self.devModPath = devModPath
     }
 
     public var url: URL {
@@ -534,6 +549,20 @@ public struct Project: Codable, Hashable, Identifiable, Sendable {
 }
 
 // MARK: - Persistence
+
+/// A saved marketplace repository. `source` is `ClaudeMarketplace.stableKey`
+/// when known so a rename does not orphan the favorite.
+public struct FavoriteMarketplace: Codable, Hashable, Identifiable, Sendable {
+    public var name: String
+    public var source: String?
+
+    public var id: String { source ?? "name:\(name)" }
+
+    public init(name: String, source: String? = nil) {
+        self.name = name
+        self.source = source
+    }
+}
 
 public struct AppSettings: Codable, Hashable, Sendable {
     public var defaultModel: ModelChoice
@@ -548,6 +577,10 @@ public struct AppSettings: Codable, Hashable, Sendable {
     /// Optional so state written by Gantry 0.1.0 continues to decode.
     public var providers: [AIProvider]?
     public var defaultProviderID: UUID?
+    /// Optional so state written before extension management decodes unchanged.
+    public var favoriteMarketplaces: [FavoriteMarketplace]?
+    /// Last folder used by the Create Mod wizard.
+    public var modsDirectory: String?
 
     public init(
         defaultModel: ModelChoice = .automatic,
@@ -558,7 +591,9 @@ public struct AppSettings: Codable, Hashable, Sendable {
         appearance: AppearanceMode? = nil,
         plugins: [PluginConnection]? = nil,
         providers: [AIProvider]? = nil,
-        defaultProviderID: UUID? = nil
+        defaultProviderID: UUID? = nil,
+        favoriteMarketplaces: [FavoriteMarketplace]? = nil,
+        modsDirectory: String? = nil
     ) {
         self.defaultModel = defaultModel
         self.defaultPermissionMode = defaultPermissionMode
@@ -569,6 +604,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.plugins = plugins
         self.providers = providers
         self.defaultProviderID = defaultProviderID
+        self.favoriteMarketplaces = favoriteMarketplaces
+        self.modsDirectory = modsDirectory
     }
 }
 

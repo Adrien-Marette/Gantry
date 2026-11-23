@@ -248,14 +248,29 @@ struct CommandPaletteView: View {
                 }
             ),
             PaletteEntry(
+                id: "action.extensions",
+                kind: .action,
+                title: "Extensions & Mods",
+                subtitle: "Install plugins, favorite sources, create a mod",
+                icon: "puzzlepiece.extension",
+                tint: Palette.accent,
+                hint: "⇧⌘E",
+                searchText: "extensions mods plugins marketplace sources skills hooks agents mcp install create",
+                action: {
+                    dismissAnd {
+                        app.showExtensions()
+                    }
+                }
+            ),
+            PaletteEntry(
                 id: "action.plugins",
                 kind: .action,
-                title: "Manage Plugins…",
+                title: "Manage Code Hosts…",
                 subtitle: "Connect GitHub, GitLab, or Gitea",
                 icon: "puzzlepiece",
                 tint: Palette.success,
                 hint: nil,
-                searchText: "plugins integrations github gitlab gitea pull requests comments checks",
+                searchText: "code hosts plugins integrations github gitlab gitea pull requests comments checks",
                 action: {
                     dismissAnd {
                         app.requestedSettingsTab = "plugins"

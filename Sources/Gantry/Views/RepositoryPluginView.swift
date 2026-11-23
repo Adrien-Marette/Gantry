@@ -314,8 +314,8 @@ struct RepositoryPluginSheet: View {
                 emptyState(
                     icon: "puzzlepiece",
                     title: "Connect a code host",
-                    message: "No plugin is connected for \(model.remote?.host ?? "this host"). Add one in Settings → Plugins to browse \(kindWord) and checks.",
-                    actionTitle: "Open Plugins",
+                    message: "No code host is connected for \(model.remote?.host ?? "this host"). Add one in Settings → Code Hosts to browse \(kindWord) and checks.",
+                    actionTitle: "Open Code Hosts",
                     action: openPluginsSettings
                 )
             } else if model.mode == .newPullRequest {

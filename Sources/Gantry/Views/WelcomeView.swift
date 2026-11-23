@@ -3,6 +3,8 @@ import SwiftUI
 import GantryCore
 
 struct WelcomeView: View {
+    var embedded: Bool = false
+
     @Environment(AppModel.self) private var app
     @Environment(\.openSettings) private var openSettings
     @State private var isDropTargeted = false
@@ -12,28 +14,30 @@ struct WelcomeView: View {
         GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: 0) {
-                    HStack(alignment: .center) {
-                        GantryLockup()
-                        Spacer()
-                        Text("A native workspace for Claude Code")
-                            .font(Typo.caption)
-                            .foregroundStyle(Palette.tertiaryInk)
-                            .padding(.horizontal, 11)
-                            .padding(.vertical, 6)
-                            .background(
-                                Capsule(style: .continuous)
-                                    .fill(Palette.surface.opacity(0.34))
-                                    .overlay(
-                                        Capsule(style: .continuous)
-                                            .strokeBorder(Palette.line, lineWidth: 0.7)
-                                    )
-                            )
+                    if !embedded {
+                        HStack(alignment: .center) {
+                            GantryLockup()
+                            Spacer()
+                            Text("A native workspace for Claude Code")
+                                .font(Typo.caption)
+                                .foregroundStyle(Palette.tertiaryInk)
+                                .padding(.horizontal, 11)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(Palette.surface.opacity(0.34))
+                                        .overlay(
+                                            Capsule(style: .continuous)
+                                                .strokeBorder(Palette.line, lineWidth: 0.7)
+                                        )
+                                )
+                        }
+                        .padding(.leading, 86)
+                        .padding(.trailing, 28)
+                        .padding(.top, 20)
                     }
-                    .padding(.leading, 86)
-                    .padding(.trailing, 28)
-                    .padding(.top, 20)
 
-                    Spacer(minLength: 22)
+                    Spacer(minLength: embedded ? 30 : 22)
 
                     hero
 
@@ -256,6 +260,24 @@ struct WelcomeView: View {
             Text(statusTitle)
                 .font(Typo.micro)
                 .foregroundStyle(Palette.tertiaryInk)
+
+            Text("·")
+                .font(Typo.micro)
+                .foregroundStyle(Palette.faintInk)
+
+            Button {
+                app.showExtensions()
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "puzzlepiece.extension")
+                        .font(.system(size: 9.5, weight: .medium))
+                    Text("Extensions & Mods")
+                        .font(Typo.micro)
+                }
+                .foregroundStyle(Palette.secondaryInk)
+            }
+            .buttonStyle(.plain)
+            .help("Browse, install, and create extensions and mods")
 
             Text("·")
                 .font(Typo.micro)

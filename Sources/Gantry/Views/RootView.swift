@@ -10,19 +10,15 @@ struct RootView: View {
         ZStack {
             AuroraBackground()
 
-            if app.projects.isEmpty {
-                WelcomeView()
-            } else {
-                HStack(spacing: 0) {
-                    SidebarView()
-                        .frame(width: 274)
-                        .transition(.move(edge: .leading).combined(with: .opacity))
+            HStack(spacing: 0) {
+                SidebarView()
+                    .frame(width: 274)
+                    .transition(.move(edge: .leading).combined(with: .opacity))
 
-                    Hairline(axis: .vertical)
+                Hairline(axis: .vertical)
 
-                    workspace
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
+                workspace
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
             if app.commandPalettePresented {
@@ -76,7 +72,10 @@ struct RootView: View {
 
     @ViewBuilder
     private var workspace: some View {
-        if let project = app.selectedProject,
+        if app.mainDestination == .extensions {
+            ExtensionsView(app: app)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let project = app.selectedProject,
            let sessionID = app.selectedSessionID,
            let session = app.session(withID: sessionID) {
             HStack(spacing: 0) {
@@ -96,7 +95,7 @@ struct RootView: View {
             ProjectLandingView(project: project)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            WelcomeView()
+            WelcomeView(embedded: true)
         }
     }
 

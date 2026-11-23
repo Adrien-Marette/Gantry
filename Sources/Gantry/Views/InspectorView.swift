@@ -233,7 +233,7 @@ struct InspectorView: View {
                 )
             }
 
-            Text("Estimates reported by Claude Code. Not a billing statement.")
+            Text("Estimated from the reported model's token usage and published pricing when available. Not a billing statement.")
                 .font(Typo.micro)
                 .foregroundStyle(Palette.faintInk)
                 .padding(.horizontal, 2)

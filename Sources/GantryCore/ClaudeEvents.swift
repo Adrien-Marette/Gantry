@@ -156,6 +156,9 @@ public struct ClaudeResultInfo: Hashable, Sendable {
     public var durationMS: Int?
     public var totalCostUSD: Double
     public var usage: TurnUsage
+    /// Cumulative per-model usage for the session. Claude Code reports this
+    /// across the whole conversation, including subagents and resumed history.
+    public var modelUsage: [String: ModelTokenUsage]
     public var terminalReason: String?
     public var permissionDenials: [JSONValue]
 
@@ -167,6 +170,7 @@ public struct ClaudeResultInfo: Hashable, Sendable {
         durationMS: Int? = nil,
         totalCostUSD: Double = 0,
         usage: TurnUsage = TurnUsage(),
+        modelUsage: [String: ModelTokenUsage] = [:],
         terminalReason: String? = nil,
         permissionDenials: [JSONValue] = []
     ) {
@@ -177,6 +181,7 @@ public struct ClaudeResultInfo: Hashable, Sendable {
         self.durationMS = durationMS
         self.totalCostUSD = totalCostUSD
         self.usage = usage
+        self.modelUsage = modelUsage
         self.terminalReason = terminalReason
         self.permissionDenials = permissionDenials
     }
@@ -393,8 +398,11 @@ public enum ClaudeStreamParser {
     private static func parseResult(_ object: [String: JSONValue]) -> [ClaudeEvent] {
         guard let subtype = object["subtype"]?.stringValue else { return [] }
         let usageObject = object["usage"]?.objectValue ?? [:]
-        let modelUsage = object["modelUsage"]?.objectValue
-        let modelName = modelUsage?.keys.sorted().first
+        let modelUsageObject = object["modelUsage"]?.objectValue ?? [:]
+        let modelUsage = parseModelUsage(modelUsageObject)
+        let modelName = modelUsage.max { lhs, rhs in
+            lhs.value.totalTokens < rhs.value.totalTokens
+        }?.key
         let usage = TurnUsage(
             inputTokens: Int(usageObject["input_tokens"]?.numberValue ?? 0),
             outputTokens: Int(usageObject["output_tokens"]?.numberValue ?? 0),
@@ -413,9 +421,32 @@ public enum ClaudeStreamParser {
             durationMS: object["duration_ms"]?.numberValue.map(Int.init),
             totalCostUSD: object["total_cost_usd"]?.numberValue ?? 0,
             usage: usage,
+            modelUsage: modelUsage,
             terminalReason: object["terminal_reason"]?.stringValue,
             permissionDenials: denials
         ))]
+    }
+
+    private static func parseModelUsage(
+        _ object: [String: JSONValue]
+    ) -> [String: ModelTokenUsage] {
+        var usage: [String: ModelTokenUsage] = [:]
+        for (model, value) in object {
+            guard let entry = value.objectValue else { continue }
+            func number(_ camel: String, _ snake: String) -> Int {
+                Int((entry[camel] ?? entry[snake])?.numberValue ?? 0)
+            }
+            usage[model] = ModelTokenUsage(
+                inputTokens: number("inputTokens", "input_tokens"),
+                outputTokens: number("outputTokens", "output_tokens"),
+                cacheReadTokens: number("cacheReadInputTokens", "cache_read_input_tokens"),
+                cacheCreationTokens: number("cacheCreationInputTokens", "cache_creation_input_tokens"),
+                reportedCostUSD: entry["costUSD"]?.numberValue
+                    ?? entry["cost_usd"]?.numberValue
+                    ?? 0
+            )
+        }
+        return usage
     }
 
     private static func parseControlRequest(_ object: [String: JSONValue]) -> [ClaudeEvent] {
@@ -484,12 +515,15 @@ public enum ClaudeStreamParser {
 }
 
 public enum TextSanitizer {
-    private static let ansiPattern = try! NSRegularExpression(
-        pattern: #"\u{001B}(?:\[[0-?]*[ -/]*[@-~]|\][^\u{0007}]*(?:\u{0007}|\u{001B}\\)|[@-_])"#
+    // ICU regex syntax takes \uHHHH, not Swift's \u{...}; the latter made this
+    // initializer throw, and the former `try!` trapped the runtime queue on the
+    // first ANSI-containing tool result. Sanitizing is cosmetic: never crash.
+    private static let ansiPattern = try? NSRegularExpression(
+        pattern: #"\u001B(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001B\\)|[@-_])"#
     )
 
     public static func stripANSI(_ text: String) -> String {
-        guard text.contains("\u{001B}") else { return text }
+        guard text.contains("\u{001B}"), let ansiPattern else { return text }
         let range = NSRange(text.startIndex..<text.endIndex, in: text)
         return ansiPattern.stringByReplacingMatches(in: text, range: range, withTemplate: "")
     }

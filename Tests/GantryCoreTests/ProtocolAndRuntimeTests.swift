@@ -68,6 +68,20 @@ import Testing
     #expect(result.structuredResult?["filePath"]?.stringValue == "/tmp/test.txt")
 }
 
+@Test func stripsANSIFromToolResults() throws {
+    // Regression: a `try!` on an invalid ICU pattern trapped the runtime queue
+    // as soon as any tool result contained an escape sequence.
+    let line = """
+    {"type":"user","message":{"role":"user","content":[{"tool_use_id":"tool_3","type":"tool_result","content":"\\u001b[31merror\\u001b[0m \\u001b]8;;https://example.com\\u0007link\\u001b]8;;\\u0007"}]},"parent_tool_use_id":null,"session_id":"s1"}
+    """
+    let events = ClaudeStreamParser.parse(line: line)
+    guard case .toolResults(let results) = events.first, let result = results.first else {
+        Issue.record("Expected tool results")
+        return
+    }
+    #expect(result.text == "error link")
+}
+
 @Test func parsesResultUsage() throws {
     let line = """
     {"type":"result","subtype":"success","is_error":false,"duration_ms":1200,"result":"Done","session_id":"s1","total_cost_usd":0.042,"usage":{"input_tokens":100,"output_tokens":50,"cache_read_input_tokens":20,"cache_creation_input_tokens":10},"modelUsage":{"claude-sonnet":{"inputTokens":100}},"terminal_reason":"completed","permission_denials":[]}
@@ -125,7 +139,7 @@ import Testing
 }
 
 @Test func storesAndLoadsSnapshot() throws {
-    let root = FileManager.default.temporaryDirectory
+    let root = GantryTestTempRoot.url
         .appendingPathComponent("Gantry-test-\(UUID().uuidString)", isDirectory: true)
     defer { try? FileManager.default.removeItem(at: root) }
     let paths = GantryPaths(supportDirectory: root, logsDirectory: root.appendingPathComponent("logs"))
@@ -143,6 +157,7 @@ import Testing
     session.turns.append(ConversationTurn(role: .user, blocks: [.makeText("Hello")]))
     var project = Project(path: "/tmp/project", name: "Project", pluginID: plugin.id)
     project.sessions = [session]
+    project.devModPath = "/tmp/project"
     let snapshot = AppSnapshot(
         projects: [project],
         selectedProjectID: project.id,
@@ -151,7 +166,11 @@ import Testing
             defaultModel: .opus,
             defaultPermissionMode: .plan,
             appearance: .dark,
-            plugins: [plugin]
+            plugins: [plugin],
+            favoriteMarketplaces: [
+                FavoriteMarketplace(name: "official", source: "repo:owner/market")
+            ],
+            modsDirectory: "/tmp/Gantry Mods"
         )
     )
 
@@ -164,18 +183,21 @@ import Testing
     #expect(loaded.settings.defaultModel == .opus)
     #expect(loaded.settings.appearance == .dark)
     #expect(loaded.settings.plugins?.first?.accountName == "octocat")
+    #expect(loaded.settings.favoriteMarketplaces?.first?.source == "repo:owner/market")
+    #expect(loaded.settings.modsDirectory == "/tmp/Gantry Mods")
     #expect(loaded.projects[0].pluginID == plugin.id)
+    #expect(loaded.projects[0].devModPath == "/tmp/project")
     #expect(loaded.selectedSessionID == session.id)
 }
 
 @Test func runsFakeClaudePermissionFlow() async throws {
-    let root = FileManager.default.temporaryDirectory
+    let root = GantryTestTempRoot.url
         .appendingPathComponent("Gantry-runtime-test-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: root) }
 
     let scriptURL = root.appendingPathComponent("fake-claude")
-    try fakeClaudeScript.write(to: scriptURL, atomically: true, encoding: .utf8)
+    try fakeClaudeScript.write(to: scriptURL, atomically: false, encoding: .utf8)
     try FileManager.default.setAttributes(
         [.posixPermissions: 0o755],
         ofItemAtPath: scriptURL.path
@@ -418,7 +440,7 @@ sys.exit(0)
         Issue.record("Claude Code executable was not found")
         return
     }
-    let root = FileManager.default.temporaryDirectory
+    let root = GantryTestTempRoot.url
         .appendingPathComponent("Gantry-real-cli-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: root) }

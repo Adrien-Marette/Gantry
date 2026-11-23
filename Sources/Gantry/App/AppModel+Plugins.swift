@@ -32,7 +32,7 @@ extension AppModel {
         guard projects[projectIndex].pluginID != pluginID else { return }
         projects[projectIndex].pluginID = pluginID
         scheduleSave()
-        invalidatePluginToolRuntimes(projectID: projectID)
+        invalidateRuntimes(projectID: projectID)
     }
 
     /// Verifies the token against the code host, then stores it in the Keychain
@@ -114,7 +114,7 @@ extension AppModel {
 
         plugins.append(connection)
         scheduleSave()
-        invalidatePluginToolRuntimes()
+        invalidateRuntimes()
         return connection
     }
 
@@ -135,7 +135,7 @@ extension AppModel {
             projects[projectIndex].pluginID = nil
         }
         scheduleSave()
-        invalidatePluginToolRuntimes()
+        invalidateRuntimes()
     }
 
     func pluginToken(for plugin: PluginConnection) async throws -> String {

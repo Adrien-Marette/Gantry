@@ -12,7 +12,7 @@ struct PluginsSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                settingsIntro("Connect code hosting accounts so Gantry can browse pull requests, post comments, and read CI checks for your projects.")
+                settingsIntro("Connect code-host integrations so Gantry can browse pull requests, post comments, and read CI checks for your projects. Extensions and mods for Claude Code live on the Extensions page.")
 
                 if app.plugins.isEmpty {
                     emptyPlugins
@@ -32,7 +32,7 @@ struct PluginsSettingsView: View {
             PluginConnectionEditor(kind: kind)
         }
         .alert(
-            "Remove plugin?",
+            "Remove code host?",
             isPresented: Binding(
                 get: { pluginToDelete != nil },
                 set: { if !$0 { pluginToDelete = nil } }
@@ -44,13 +44,13 @@ struct PluginsSettingsView: View {
             }
             Button("Cancel", role: .cancel) { pluginToDelete = nil }
         } message: { plugin in
-            Text("“\(plugin.name)” and its saved access token will be removed. Projects using it will use another matching plugin if one is available.")
+            Text("“\(plugin.name)” and its saved access token will be removed. Projects using it will use another matching code host if one is available.")
         }
     }
 
     private var emptyPlugins: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionLabel(title: "Built-in plugins")
+            SectionLabel(title: "Built-in code hosts")
 
             VStack(spacing: 0) {
                 ForEach(Array(PluginKind.allCases.enumerated()), id: \.element.id) { index, kind in
@@ -85,7 +85,7 @@ struct PluginsSettingsView: View {
     private var connectedPlugins: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                SectionLabel(title: "Connected plugins")
+                SectionLabel(title: "Connected code hosts")
                 Spacer()
                 addPluginMenu
             }
@@ -146,7 +146,7 @@ struct PluginsSettingsView: View {
                     }
                 }
                 Divider()
-                Button("Remove Plugin…", role: .destructive) {
+                Button("Remove Code Host…", role: .destructive) {
                     pluginToDelete = plugin
                 }
             } label: {
@@ -231,7 +231,7 @@ struct PluginsSettingsView: View {
                 Text("Access tokens live in Apple Keychain.")
                     .font(Typo.captionMedium)
                     .foregroundStyle(Palette.secondaryInk)
-                Text("Gantry stores one token per plugin as a Keychain internet password. Tokens are sent only to the code host you configure and never go into session files or logs. When a project's origin matches, Claude Code gets scoped MCP tools that call back into Gantry; it never receives the token. Use the narrowest scopes that let the plugin do its job.")
+                Text("Gantry stores one token per code host as a Keychain internet password. Tokens are sent only to the code host you configure and never go into session files or logs. When a project's origin matches, Claude Code gets scoped MCP tools that call back into Gantry; it never receives the token. Use the narrowest scopes that let the integration do its job.")
                     .font(Typo.micro)
                     .foregroundStyle(Palette.faintInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -449,7 +449,7 @@ private struct PluginConnectionEditor: View {
                 Text("Connect \(kind.title)")
                     .font(Typo.sectionTitle)
                     .foregroundStyle(Palette.ink)
-                Text("Built-in plugin · \(kind.pullRequestTermPlural.capitalized)")
+                Text("Built-in code host · \(kind.pullRequestTermPlural.capitalized)")
                     .font(Typo.micro)
                     .foregroundStyle(Palette.tertiaryInk)
             }

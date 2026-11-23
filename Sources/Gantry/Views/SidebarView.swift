@@ -10,6 +10,7 @@ struct SidebarView: View {
     @State private var hoveredProjectID: UUID?
     @State private var hoveredSessionID: UUID?
     @State private var isHoveringNewSession = false
+    @State private var isHoveringExtensions = false
     @FocusState private var searchFocused: Bool
     @State private var pendingDeleteSession: ChatSession?
     @State private var pendingRemoveProject: Project?
@@ -81,6 +82,8 @@ struct SidebarView: View {
                 ) {
                     _ = app.newSession()
                 }
+                .disabled(app.projects.isEmpty)
+                .opacity(app.projects.isEmpty ? 0.45 : 1)
             }
             .padding(.leading, 80)
             .padding(.trailing, 14)
@@ -90,6 +93,9 @@ struct SidebarView: View {
                 .padding(.horizontal, 12)
 
             newSessionButton
+                .padding(.horizontal, 12)
+
+            extensionsButton
                 .padding(.horizontal, 12)
 
             HStack {
@@ -188,7 +194,60 @@ struct SidebarView: View {
         }
         .buttonStyle(.plain)
         .onHover { isHoveringNewSession = $0 }
+        .disabled(app.projects.isEmpty)
+        .opacity(app.projects.isEmpty ? 0.45 : 1)
         .accessibilityLabel("New session")
+    }
+
+    private var extensionsButton: some View {
+        let isSelected = app.mainDestination == .extensions
+
+        return Button {
+            app.showExtensions()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "puzzlepiece.extension")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(isSelected ? Palette.accent : Palette.tertiaryInk)
+                    .frame(width: 17, height: 17)
+                    .background(
+                        Circle().fill(
+                            (isSelected ? Palette.accent : Palette.tertiaryInk).opacity(0.10)
+                        )
+                    )
+
+                Text("Extensions & Mods")
+                    .font(Typo.ui)
+                    .foregroundStyle(isSelected ? Palette.ink : Palette.secondaryInk)
+
+                Spacer()
+
+                if isSelected {
+                    Circle()
+                        .fill(Palette.accent)
+                        .frame(width: 5, height: 5)
+                }
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(
+                        isSelected
+                            ? Palette.sidebarSelection
+                            : (isHoveringExtensions ? Palette.sidebarHover : Color.clear)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(isSelected ? Palette.lineStrong : Color.clear, lineWidth: 0.7)
+                    )
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHoveringExtensions = $0 }
+        .help("Browse, install, and create extensions and mods (⇧⌘E)")
+        .accessibilityLabel("Extensions & Mods")
     }
 
     // MARK: - Project list
@@ -216,7 +275,9 @@ struct SidebarView: View {
     private var projectList: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 2) {
-                if filteredProjects.isEmpty {
+                if app.projects.isEmpty {
+                    noProjectsState
+                } else if filteredProjects.isEmpty {
                     searchEmptyState
                 } else {
                     ForEach(filteredProjects, id: \.project.id) { entry in
@@ -229,6 +290,27 @@ struct SidebarView: View {
             .padding(.bottom, 16)
         }
         .scrollIndicators(.never)
+    }
+
+    private var noProjectsState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "folder.badge.plus")
+                .font(.system(size: 18, weight: .light))
+                .foregroundStyle(Palette.faintInk)
+            Text("No projects yet")
+                .font(Typo.captionMedium)
+                .foregroundStyle(Palette.secondaryInk)
+            Button {
+                app.chooseProjectFolder()
+            } label: {
+                Text("Open a Project")
+                    .font(Typo.micro)
+                    .foregroundStyle(Palette.accent)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 44)
     }
 
     private func projectSection(_ project: Project, sessions: [ChatSession]) -> some View {

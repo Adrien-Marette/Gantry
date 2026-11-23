@@ -17,7 +17,7 @@ struct SettingsView: View {
                 .tag(Tab.general)
 
             PluginsSettingsView()
-                .tabItem { Label("Plugins", systemImage: "puzzlepiece") }
+                .tabItem { Label("Code Hosts", systemImage: "puzzlepiece") }
                 .tag(Tab.plugins)
 
             ProvidersSettingsView()

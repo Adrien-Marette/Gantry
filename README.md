@@ -2,7 +2,7 @@
 
 A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid Glass. It runs Claude Code in the background and keeps the conversation, project context, streaming output, tool permissions, and AI provider choice in one calm window instead of a terminal.
 
-**Gantry 0.2.0** adds switchable AI provider profiles, Apple Passwords–backed API keys, code-host plugins, and an appearance control.
+**Gantry 0.2.0** adds switchable AI provider profiles, Apple Passwords–backed API keys, code-host plugins, an Extensions & Mods manager, and an appearance control.
 
 ![Gantry welcome](docs/screenshot-welcome.jpg)
 
@@ -19,6 +19,7 @@ A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid G
 - **Apple Passwords / macOS Keychain** storage for provider API keys. Keys are never written into Gantry's session file, logs, or command line.
 - **Provider editor** with base URL, auth type, model mappings, and advanced environment variables.
 - **Code-host plugins** for GitHub, GitLab, and Gitea. Connect accounts, browse pull requests, read CI checks, post comments, and create pull requests from a repository panel.
+- **Extensions & Mods page.** Browse Claude Code plugin marketplaces, install/enable/disable/update/uninstall, favorite source repositories, and scaffold a new mod with validation and tests.
 - **MCP tool bridge.** When a project's remote matches a connected plugin, Claude Code gets six repository-scoped tools for reading pull requests and checks, commenting, and creating pull requests. Code-host tokens stay in the app.
 - **Appearance control** in **Settings → General** to follow macOS or pin Gantry to light or dark.
 - **Automatic migration** from Gantry 0.1.0 state. Existing sessions continue on the built-in current Claude Code setup.
@@ -28,11 +29,13 @@ A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid G
 - **One persistent Claude Code process per chat.** Each open session speaks the CLI's bidirectional `stream-json` protocol, so replies stream live and follow-up messages stay in the same Claude Code conversation.
 - **Native permission prompts.** Claude Code's `can_use_tool` requests arrive as a focused glass card in the app. Allow once, allow for the session, or deny without ever touching a TUI.
 - **AI provider menu.** Add Anthropic-compatible gateways as named providers, then switch the backend for any chat from the provider menu in its header. Existing conversations resume on the new provider. The built-in **Claude Code** provider keeps using your current CLI setup, so your existing DeepSeek configuration remains available without reconfiguring anything.
-- **Code-host plugins.** Connect GitHub, GitLab, or Gitea accounts in Settings, then open the repository panel from any chat. It detects the project's `origin` remote and can list open pull requests, inspect CI checks, post a comment, or create a pull request. When multiple accounts match a host, choose the one for the project. Matching plugins are also exposed to Claude Code as a scoped MCP server.
+- **Code-host plugins.** Connect GitHub, GitLab, or Gitea accounts in **Settings → Code Hosts**, then open the repository panel from any chat. It detects the project's `origin` remote and can list open pull requests, inspect CI checks, post a comment, or create a pull request. When multiple accounts match a host, choose the one for the project. Matching plugins are also exposed to Claude Code as a scoped MCP server.
+- **Extensions & mods.** A top-level page for the Claude Code plugin ecosystem: browse marketplaces, install and manage skills, commands, agents, hooks, MCP bundles, and UI mods, favorite source repositories, and create your own mod. Installed state stays with Claude Code's `claude plugin` CLI, so the same extensions work in the terminal. Installing third-party code always requires a trust review; marketplace-declared install commands need a separate explicit approval and are never auto-accepted. Changes apply to new chats, and running chats restart their Claude process after the current turn.
 - **Keys in Apple Passwords.** Provider API keys are written to the macOS Keychain as internet-password items, never to Gantry's session file, logs, or command line. When iCloud Keychain is available, they can sync through Apple Passwords. Keys can be entered, replaced, or removed from **Settings → Providers** and are shown as masked fields only.
 - **Sessions that survive restarts.** Projects, chats, provider choice, model choice, and permission mode are stored locally. The Claude Code session ID is resumed automatically after relaunch.
 - **Real tool activity.** Bash, Read, Write, Edit, Task, web, MCP, and other tool calls appear as compact, inspectable rows. Expanded views show commands, file diffs, output, todos, and structured results.
-- **Workbench details.** A sidebar for projects and sessions, a command palette (`⌘K`), streaming Markdown with code highlighting and tables, a session inspector, and an estimated usage view.
+- **Model-aware cost estimates.** Turn and session costs are calculated from the reported model's published token pricing and actual usage, instead of relying on Claude Code's cost assumptions. Unknown models fall back to the estimate Claude Code reports. These are estimates, not billing data.
+- **Workbench details.** A sidebar for projects and sessions, a command palette (`⌘K`), streaming Markdown with code highlighting and tables, a session inspector, and a model-aware estimated usage view.
 - **A design that belongs on macOS.** SF typography, an adaptive warm canvas, system/light/dark appearance, and Liquid Glass for the floating composer, permission sheet, and command palette. macOS 26 or later is required for the glass APIs.
 
 ## Requirements
@@ -42,6 +45,7 @@ A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid G
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
   - Developed against Claude Code `2.1.330`
   - Gantry uses your existing Claude Code login, settings, model aliases, hooks, and MCP servers
+  - Extension management requires a Claude Code version with the `claude plugin` commands
 
 ## Build and run
 
@@ -136,7 +140,7 @@ Gantry ships with three built-in plugins:
 | GitLab | gitlab.com and self-hosted GitLab | Merge requests, notes, pipelines and jobs |
 | Gitea | Gitea and Forgejo | Pull requests, comments and commit statuses |
 
-Connect an account in **Settings → Plugins** with a personal access token. The token is verified against the instance's `/user` endpoint before it is stored as a Keychain internet password; it is never shown again and never written to Gantry's state file or logs.
+Connect an account in **Settings → Code Hosts** with a personal access token. The token is verified against the instance's `/user` endpoint before it is stored as a Keychain internet password; it is never shown again and never written to Gantry's state file or logs.
 
 A repository panel is available from the branch button in a chat header. It reads the project's `origin` remote, finds a plugin connected to that host, and shows open pull requests or merge requests. From the panel you can:
 
@@ -163,12 +167,23 @@ Repository-panel actions are started by you. MCP actions are requested by Claude
 
 Suggested token scopes are shown in the connection editor. GitHub needs repository access plus pull-request, issue, and checks access; GitLab needs the `api` scope; Gitea needs repository and issue read/write access. Use the narrowest scope that fits your workflow. HTTPS is recommended for every remote instance. HTTP connections to local hosts are allowed; App Transport Security may reject HTTP for public hostnames.
 
+## Extensions and mods
+
+The **Extensions & Mods** page in the sidebar (or `⇧⌘E`) manages the Claude Code plugin ecosystem: skills, commands, agents, hooks, MCP bundles, and UI mods.
+
+- **Browse** the marketplaces already configured in Claude Code. Install, enable, disable, update, and uninstall extensions. A trust sheet shows the marketplace and source and warns that extensions can add code that runs with your permissions. If a marketplace declares an install command, Gantry shows the exact command and its SHA-256 and requires a second explicit approval; it never passes `-y` or accepts the command automatically.
+- **Installed** lists plugins with their scope and settings status. Gantry manages user-scope plugins; project/local-scope entries are shown read-only because their state belongs to a project.
+- **Sources** adds marketplace repositories by `owner/repo`, git or HTTPS URL, or local path. Repositories can be favorited and sort first in Browse and Sources. Removing a source does not uninstall plugins already installed from it.
+- **Create** scaffolds a valid mod from a status-line, slash-command, pane, tool-guard, or blank template. It writes `.claude-plugin/plugin.json`, a hooks module, a README, and a starter test for panes; runs `claude plugin validate` (and optionally `claude plugin test`); and can open the folder in Gantry, where the project's chats load it with `--plugin-dir`.
+- Installed plugin state belongs to Claude Code's `claude plugin` commands, so extensions installed here also work in the terminal. Gantry stores only favorite marketplace repositories and the last mods folder. After a plugin change, idle Claude processes are recycled and running chats pick up the change after their current turn.
+
 ## Storage and privacy
 
 - Session data: `~/Library/Application Support/Gantry/state.json` (mode `0600`)
 - Claude Code stderr logs: `~/Library/Logs/Gantry/` (files mode `0600`)
 - Provider API keys: macOS Keychain / Apple Passwords internet-password items. They are not stored in Gantry's session data.
-- Code-host access tokens: macOS Keychain internet-password items, one per plugin connection. Plugin metadata and project-to-plugin choices are stored in `state.json`; tokens are not.
+- Code-host access tokens: macOS Keychain internet-password items, one per plugin connection. Code-host metadata and project-to-plugin choices are stored in `state.json`; tokens are not.
+- Extension management: installed plugin and marketplace state lives in Claude Code's own directories. Gantry stores only favorite marketplace repositories (name + source key) and the last mods folder in `state.json`.
 - MCP runtime configs and sockets: temporary files with user-only permissions. The MCP config contains a random bridge token and a socket path, never a code-host token. Both are removed when the Claude runtime stops.
 - A corrupt state file is copied aside as `state-unreadable-<timestamp>.json` before the app can overwrite it.
 - Claude Code's own OAuth credentials remain managed by Claude Code.
@@ -181,9 +196,11 @@ Suggested token scopes are shown in the connection editor. GitHub needs reposito
 - Provider switching applies between turns; it is disabled while a response is in flight.
 - Provider profiles are per session and remembered. Existing sessions keep their provider when the default changes.
 - Code-host plugins use personal access tokens; there is no browser-based OAuth flow.
+- Extension management is user-scope only. Project/local-scope plugins are shown read-only. Inline plugin configuration for extensions that declare user settings is not exposed yet; Gantry shows a copyable `claude plugin configure` command instead.
+- Extension changes require restarting the chat's Claude process; Gantry recycles idle processes immediately and running chats after their current turn.
 - The repository panel and MCP tools expose open pull requests, conversation comments, CI checks, and pull-request creation. Inline review threads, merging, and dispatching CI workflows are not included; checks are read-only.
-- Plugin features need an `origin` remote. When several accounts match a host, the selected account is remembered per project.
-- The MCP bridge is scoped to one repository and requires the bundled `Gantry-plugins` helper, which the provided build script includes. It is only active when the chat's Claude Code process starts with a matching plugin; changing plugins recycles idle runtimes.
+- Code-host features need an `origin` remote. When several accounts match a host, the selected account is remembered per project.
+- The MCP bridge is scoped to one repository and requires the bundled `Gantry-plugins` helper, which the provided build script includes. It is only active when the chat's Claude Code process starts with a matching plugin; changing code hosts recycles idle runtimes.
 - No file or image attachments, slash-command picker, MCP elicitation UI, or interactive `AskUserQuestion` dialogs. Standard permission prompts are supported.
 - Files edited via Bash are not listed in the inspector's edited-files list (only Edit/Write/NotebookEdit are).
 - Idle Claude Code processes stay alive while the app is open, which keeps follow-ups fast at the cost of memory.
@@ -205,17 +222,20 @@ Sources/GantryCore/
   GiteaPlugin.swift     Gitea REST implementation
   PluginTools.swift     MCP tool catalog, wire format, and executor
   PluginToolBridge.swift Private Unix-socket bridge for MCP tool calls
+  ClaudePluginManager.swift Claude Code plugin/marketplace CLI models and manager
+  ModScaffolder.swift   Mod templates, name validation, and file generation
   ClaudeEvents.swift    Stream protocol types and JSON line parser
   ClaudeWire.swift      Outgoing user, control, and permission messages
   ClaudeRuntime.swift   Process lifecycle, stream framing, control handshake, logging
   ClaudeLocator.swift   CLI discovery and launch arguments
   AppDataStore.swift    Local state and log paths
   MarkdownParser.swift  Dependency-free block Markdown parser
+  ModelPricing.swift    Published per-model pricing and model-aware cost estimation
 Sources/Gantry/
-  App/                  App entry, observable state, providers, plugins, MCP bridge lifecycle, conversation orchestration
+  App/                  App entry, observable state, providers, plugins, extensions, MCP bridge lifecycle, conversation orchestration
   Design/               Palette, glass surfaces, brand mark, shared controls
   Utilities/            Inline Markdown, syntax highlighting, tool and provider presentation
-  Views/                Welcome, sidebar, conversation, composer, permissions, inspector, settings, provider editor, plugin settings, repository panel
+  Views/                Welcome, sidebar, conversation, composer, permissions, inspector, settings, provider editor, code-host settings, repository panel, extensions and mods
 Sources/GantryPluginMCP/
   main.swift            Bundled stdio MCP server; forwards tool calls to the app
 Scripts/
@@ -225,7 +245,11 @@ Scripts/
 
 ## Verification
 
-- `swift test` — 40 passing tests covering protocol parsing/serialization, runtime permission flow with a fake CLI, provider environment injection, plugin remote parsing and REST fixtures, MCP tool execution and the Unix-socket bridge, Markdown, persistence, and 0.1.0 state migration.
+- `swift test` — tests covering protocol parsing/serialization, runtime permission flow with a fake CLI, provider environment injection, model-aware cost estimation, plugin remote parsing and REST fixtures, MCP tool execution and the Unix-socket bridge, Claude Code plugin catalog/command parsing, favorites, mod scaffolding, Markdown, persistence, and 0.1.0 state migration.
+- Extension scaffolding can be validated against the real CLI:
+  ```sh
+  Gantry_RUN_CLI_INTEGRATION=1 swift test --filter modScaffoldCLIValidation
+  ```
 - The bundled MCP helper was exercised with a local Unix-socket harness, and Claude Code was verified to launch it from the generated MCP configuration without sending a model prompt.
 - Keychain round-trip tests are gated:
   ```sh

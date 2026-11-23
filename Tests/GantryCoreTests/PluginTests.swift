@@ -111,7 +111,7 @@ private func jsonData(_ string: String) -> Data {
 }
 
 @Test func readsOriginRemoteFromGitConfig() throws {
-    let root = FileManager.default.temporaryDirectory
+    let root = GantryTestTempRoot.url
         .appendingPathComponent("Gantry-remote-\(UUID().uuidString)", isDirectory: true)
     let gitDirectory = root.appendingPathComponent(".git", isDirectory: true)
     try FileManager.default.createDirectory(at: gitDirectory, withIntermediateDirectories: true)
@@ -127,7 +127,7 @@ private func jsonData(_ string: String) -> Data {
     """
     try config.write(
         to: gitDirectory.appendingPathComponent("config"),
-        atomically: true,
+        atomically: false,
         encoding: .utf8
     )
 
@@ -153,6 +153,7 @@ private func jsonData(_ string: String) -> Data {
     decoder.dateDecodingStrategy = .iso8601
     let project = try decoder.decode(Project.self, from: json)
     #expect(project.pluginID == nil)
+    #expect(project.devModPath == nil)
     #expect(project.name == "Old project")
 }
 

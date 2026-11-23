@@ -139,7 +139,7 @@ import Testing
 }
 
 @Test func storesAndLoadsSnapshot() throws {
-    let root = FileManager.default.temporaryDirectory
+    let root = GantryTestTempRoot.url
         .appendingPathComponent("Gantry-test-\(UUID().uuidString)", isDirectory: true)
     defer { try? FileManager.default.removeItem(at: root) }
     let paths = GantryPaths(supportDirectory: root, logsDirectory: root.appendingPathComponent("logs"))
@@ -157,6 +157,7 @@ import Testing
     session.turns.append(ConversationTurn(role: .user, blocks: [.makeText("Hello")]))
     var project = Project(path: "/tmp/project", name: "Project", pluginID: plugin.id)
     project.sessions = [session]
+    project.devModPath = "/tmp/project"
     let snapshot = AppSnapshot(
         projects: [project],
         selectedProjectID: project.id,
@@ -165,7 +166,11 @@ import Testing
             defaultModel: .opus,
             defaultPermissionMode: .plan,
             appearance: .dark,
-            plugins: [plugin]
+            plugins: [plugin],
+            favoriteMarketplaces: [
+                FavoriteMarketplace(name: "official", source: "repo:owner/market")
+            ],
+            modsDirectory: "/tmp/Gantry Mods"
         )
     )
 
@@ -178,18 +183,21 @@ import Testing
     #expect(loaded.settings.defaultModel == .opus)
     #expect(loaded.settings.appearance == .dark)
     #expect(loaded.settings.plugins?.first?.accountName == "octocat")
+    #expect(loaded.settings.favoriteMarketplaces?.first?.source == "repo:owner/market")
+    #expect(loaded.settings.modsDirectory == "/tmp/Gantry Mods")
     #expect(loaded.projects[0].pluginID == plugin.id)
+    #expect(loaded.projects[0].devModPath == "/tmp/project")
     #expect(loaded.selectedSessionID == session.id)
 }
 
 @Test func runsFakeClaudePermissionFlow() async throws {
-    let root = FileManager.default.temporaryDirectory
+    let root = GantryTestTempRoot.url
         .appendingPathComponent("Gantry-runtime-test-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: root) }
 
     let scriptURL = root.appendingPathComponent("fake-claude")
-    try fakeClaudeScript.write(to: scriptURL, atomically: true, encoding: .utf8)
+    try fakeClaudeScript.write(to: scriptURL, atomically: false, encoding: .utf8)
     try FileManager.default.setAttributes(
         [.posixPermissions: 0o755],
         ofItemAtPath: scriptURL.path
@@ -432,7 +440,7 @@ sys.exit(0)
         Issue.record("Claude Code executable was not found")
         return
     }
-    let root = FileManager.default.temporaryDirectory
+    let root = GantryTestTempRoot.url
         .appendingPathComponent("Gantry-real-cli-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: root) }

@@ -111,11 +111,11 @@ extension AppModel {
         pluginToolConfigURLs.removeAll()
     }
 
-    func invalidatePluginToolRuntimes(projectID: UUID? = nil) {
+    func invalidateRuntimes(projectID: UUID? = nil) {
         for project in projects where projectID == nil || project.id == projectID {
             for session in project.sessions {
                 if activities[session.id]?.isRunning == true {
-                    stalePluginSessions.insert(session.id)
+                    staleRuntimeSessions.insert(session.id)
                 } else {
                     recycleRuntime(for: session.id)
                 }
@@ -123,8 +123,8 @@ extension AppModel {
         }
     }
 
-    func refreshPluginToolRuntimeIfNeeded(sessionID: UUID) {
-        guard stalePluginSessions.remove(sessionID) != nil else { return }
+    func refreshRuntimeIfNeeded(sessionID: UUID) {
+        guard staleRuntimeSessions.remove(sessionID) != nil else { return }
         recycleRuntime(for: sessionID)
     }
 

@@ -28,10 +28,14 @@ extension AppModel {
         }
 
         var session = projects[location.projectIndex].sessions[location.sessionIndex]
+        let hadPriorTurns = !session.turns.isEmpty
         if session.turns.isEmpty, !session.hasCustomTitle {
             session.title = Self.generatedTitle(from: prompt)
         }
-        let startedAtCost = session.totalCostUSD
+        // Older state stored only Claude Code's cumulative cost in
+        // `totalCostUSD`; use it as the reported baseline until the first
+        // result records a dedicated value.
+        let startedAtCost = session.claudeReportedCostUSD ?? session.totalCostUSD
         session.turns.append(ConversationTurn(role: .user, blocks: [.makeText(prompt)]))
         let assistantTurn = ConversationTurn(role: .assistant, isStreaming: true)
         session.turns.append(assistantTurn)
@@ -46,6 +50,15 @@ extension AppModel {
         activeTurnIDs[sessionID] = assistantTurn.id
         processedBlockSignatures[sessionID] = []
         turnStartCosts[sessionID] = startedAtCost
+        if let storedUsage = session.modelUsage {
+            turnStartModelUsage[sessionID] = storedUsage
+        } else if hadPriorTurns {
+            // Legacy session with no cumulative snapshot: price this turn from
+            // its per-turn usage instead of treating the session as new.
+            turnStartModelUsage.removeValue(forKey: sessionID)
+        } else {
+            turnStartModelUsage[sessionID] = [:]
+        }
         previewBuffers[sessionID] = StreamPreview()
         resetPreview(sessionID)
 
@@ -213,6 +226,19 @@ extension AppModel {
                 (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
 
+        if let devModPath = project.devModPath {
+            let modURL = URL(fileURLWithPath: devModPath)
+                .resolvingSymlinksInPath()
+                .standardizedFileURL
+            let projectURL = project.url
+                .resolvingSymlinksInPath()
+                .standardizedFileURL
+            if modURL.path == projectURL.path,
+               FileManager.default.fileExists(atPath: modURL.path) {
+                extraArguments.append(contentsOf: ["--plugin-dir", modURL.path])
+            }
+        }
+
         let configuration = ClaudeLaunchConfiguration(
             executableURL: URL(fileURLWithPath: executablePath),
             workingDirectory: project.url,
@@ -311,10 +337,9 @@ extension AppModel {
         guard let activity = activities[sessionID] else { return }
         switch event {
         case .system(let info):
-            mutateSession(sessionID) { session in
-                if let model = info.model, !model.isEmpty {
-                    session.actualModelName = model
-                }
+            if let model = info.model, !model.isEmpty,
+               session(withID: sessionID)?.actualModelName != model {
+                mutateSession(sessionID) { $0.actualModelName = model }
             }
             if !info.slashCommands.isEmpty {
                 activity.availableCommands = info.slashCommands
@@ -341,17 +366,15 @@ extension AppModel {
             break
 
         case .streamText(let text):
-            var buffer = previewBuffers[sessionID] ?? StreamPreview()
-            buffer.text.append(text)
-            previewBuffers[sessionID] = buffer
-            activity.statusText = "Responding"
+            previewBuffers[sessionID, default: StreamPreview()].text.append(text)
+            if activity.statusText != "Responding" {
+                activity.statusText = "Responding"
+            }
             schedulePreviewFlush(sessionID)
 
         case .streamThinking(let text):
-            var buffer = previewBuffers[sessionID] ?? StreamPreview()
-            buffer.thinking.append(text)
-            previewBuffers[sessionID] = buffer
-            if activity.statusText != "Responding" {
+            previewBuffers[sessionID, default: StreamPreview()].thinking.append(text)
+            if activity.statusText != "Responding", activity.statusText != "Thinking" {
                 activity.statusText = "Thinking"
             }
             schedulePreviewFlush(sessionID)
@@ -436,7 +459,8 @@ extension AppModel {
                 .firstIndex(where: { $0.id == turnID }) else { return }
 
         var signatures = processedBlockSignatures[sessionID] ?? []
-        var turn = projects[location.projectIndex].sessions[location.sessionIndex].turns[turnIndex]
+        var session = projects[location.projectIndex].sessions[location.sessionIndex]
+        var turn = session.turns[turnIndex]
         let apiID = message.apiMessageID ?? "local"
         let existingToolIDs = Set(turn.tools.map(\.id))
         var addedAnything = false
@@ -474,16 +498,27 @@ extension AppModel {
         }
         processedBlockSignatures[sessionID] = signatures
 
-        if let model = message.model, !model.isEmpty, model != "<synthetic>" {
-            mutateSession(sessionID) { $0.actualModelName = model }
+        let modelChanged: Bool
+        if let model = message.model,
+           !model.isEmpty,
+           model != "<synthetic>",
+           session.actualModelName != model {
+            session.actualModelName = model
+            modelChanged = true
+        } else {
+            modelChanged = false
         }
 
-        projects[location.projectIndex].sessions[location.sessionIndex].turns[turnIndex] = turn
+        guard addedAnything || modelChanged else { return }
+        if addedAnything {
+            session.turns[turnIndex] = turn
+        }
+        projects[location.projectIndex].sessions[location.sessionIndex] = session
         if addedAnything {
             resetPreview(sessionID)
             activity.statusText = "Working"
-            scheduleSave()
         }
+        scheduleSave()
     }
 
     private func applyToolResult(_ result: ClaudeToolResult, sessionID: UUID) {
@@ -547,14 +582,18 @@ extension AppModel {
         previewFlushTasks.removeValue(forKey: sessionID)
         guard let activity = activities[sessionID],
               let buffer = previewBuffers[sessionID] else { return }
-        if activity.preview.text != buffer.text {
-            activity.preview.text = buffer.text
+        var preview = activity.preview
+        if preview.text != buffer.text {
+            preview.text = buffer.text
         }
-        if activity.preview.thinking != buffer.thinking {
-            activity.preview.thinking = buffer.thinking
+        if preview.thinking != buffer.thinking {
+            preview.thinking = buffer.thinking
         }
-        if let toolName = buffer.toolName, activity.preview.toolName != toolName {
-            activity.preview.toolName = toolName
+        if let toolName = buffer.toolName, preview.toolName != toolName {
+            preview.toolName = toolName
+        }
+        if preview != activity.preview {
+            activity.preview = preview
         }
     }
 
@@ -596,8 +635,13 @@ extension AppModel {
               let turnIndex = projects[location.projectIndex].sessions[location.sessionIndex].turns
                 .firstIndex(where: { $0.id == turnID }) else {
             activeTurnIDs.removeValue(forKey: sessionID)
+            turnStartCosts.removeValue(forKey: sessionID)
+            turnStartModelUsage.removeValue(forKey: sessionID)
             return
         }
+        // A result event and a process exit can both try to finish the turn.
+        // Only the first one may price it.
+        guard activeTurnIDs[sessionID] == turnID else { return }
 
         // Flush any final streamed text that did not also arrive as a complete message.
         previewFlushTasks[sessionID]?.cancel()
@@ -634,20 +678,45 @@ extension AppModel {
         }
 
         var session = projects[location.projectIndex].sessions[location.sessionIndex]
-        let startCost = turnStartCosts[sessionID] ?? max(0, session.totalCostUSD)
+        let startCost = turnStartCosts[sessionID] ?? 0
         if let result {
             var usage = result.usage
-            usage.costUSD = max(0, result.totalCostUSD - startCost)
+            let modelName = session.actualModelName ?? usage.modelName
+            let incrementalCost = ModelCostEstimator.incrementalCost(
+                from: turnStartModelUsage[sessionID],
+                to: result.modelUsage
+            )
+            // A zero delta with non-zero per-turn usage means the cumulative
+            // snapshot was stale; prefer the per-turn estimate.
+            let incremental = (incrementalCost ?? 0) > 0 ? incrementalCost : nil
+            let perTurn = result.usage.totalTokens > 0
+                ? ModelCostEstimator.cost(of: result.usage, model: modelName)
+                : nil
+            usage.costUSD = incremental
+                ?? perTurn
+                ?? max(0, result.totalCostUSD - startCost)
             if usage.durationMS == nil {
                 usage.durationMS = result.durationMS
             }
             turn.usage = usage
-            if let modelName = usage.modelName, !modelName.isEmpty {
-                session.actualModelName = modelName
+            if session.actualModelName == nil,
+               let reportedModel = usage.modelName,
+               !reportedModel.isEmpty {
+                session.actualModelName = reportedModel
             }
-            if result.totalCostUSD > 0 || session.totalCostUSD == 0 {
-                session.totalCostUSD = result.totalCostUSD
+            if !result.modelUsage.isEmpty {
+                session.modelUsage = result.modelUsage
             }
+            session.claudeReportedCostUSD = result.totalCostUSD
+
+            // Add this turn's estimate to the running total. Keeping the larger
+            // of the stored total and the turns' sum preserves history imported
+            // from older versions that did not price every turn.
+            let priorTurnCosts = session.turns.enumerated()
+                .filter { $0.offset != turnIndex }
+                .compactMap { $0.element.usage?.costUSD }
+                .reduce(0, +)
+            session.totalCostUSD = max(session.totalCostUSD, priorTurnCosts) + max(0, usage.costUSD)
         }
         turn.errorText = error.map { String($0.prefix(2_500)) }
         turn.stopReason = stopReason
@@ -659,13 +728,14 @@ extension AppModel {
         activeTurnIDs.removeValue(forKey: sessionID)
         processedBlockSignatures.removeValue(forKey: sessionID)
         turnStartCosts.removeValue(forKey: sessionID)
+        turnStartModelUsage.removeValue(forKey: sessionID)
         forceStopTasks[sessionID]?.cancel()
         forceStopTasks.removeValue(forKey: sessionID)
 
         let activity = activities[sessionID]
         activity?.resetIdle()
         refreshProviderRuntimeIfNeeded(sessionID: sessionID)
-        refreshPluginToolRuntimeIfNeeded(sessionID: sessionID)
+        refreshRuntimeIfNeeded(sessionID: sessionID)
         toastCompletionIfNeeded(sessionID: sessionID, hadError: error != nil)
 
         if persist && !isAppTerminating {

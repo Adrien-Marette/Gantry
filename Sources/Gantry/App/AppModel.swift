@@ -71,6 +71,11 @@ enum ClaudeAvailability: Equatable {
     }
 }
 
+enum MainDestination: Hashable {
+    case workspace
+    case extensions
+}
+
 @MainActor
 @Observable
 final class AppModel {
@@ -84,6 +89,7 @@ final class AppModel {
     var claudeAvailability: ClaudeAvailability = .checking
     var loadError: String?
     var commandPalettePresented = false
+    var mainDestination: MainDestination = .workspace
     var searchText = ""
     var isAppTerminating = false
     var showInspector: Bool
@@ -104,10 +110,11 @@ final class AppModel {
     @ObservationIgnored var previewFlushTasks: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored var forceStopTasks: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored var turnStartCosts: [UUID: Double] = [:]
+    @ObservationIgnored var turnStartModelUsage: [UUID: [String: ModelTokenUsage]] = [:]
     @ObservationIgnored var saveTask: Task<Void, Never>?
     @ObservationIgnored var terminationObserver: NSObjectProtocol?
     @ObservationIgnored var staleProviderSessions: Set<UUID> = []
-    @ObservationIgnored var stalePluginSessions: Set<UUID> = []
+    @ObservationIgnored var staleRuntimeSessions: Set<UUID> = []
     @ObservationIgnored var pluginToolBridges: [UUID: PluginToolBridge] = [:]
     @ObservationIgnored var pluginToolConfigURLs: [UUID: URL] = [:]
     @ObservationIgnored var started = false
@@ -188,6 +195,12 @@ final class AppModel {
             }
         }
 
+        snapshot.settings.favoriteMarketplaces =
+            Self.normalizedFavoriteMarketplaces(snapshot.settings.favoriteMarketplaces)
+        snapshot.settings.modsDirectory = snapshot.settings.modsDirectory?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfEmpty
+
         self.projects = snapshot.projects
         self.settings = snapshot.settings
         self.providers = loadedProviders
@@ -251,7 +264,7 @@ final class AppModel {
         runtimes.values.forEach { $0.terminate() }
         runtimes.removeAll()
         stopAllPluginToolBridges()
-        stalePluginSessions.removeAll()
+        staleRuntimeSessions.removeAll()
         saveNow()
     }
 
@@ -439,6 +452,7 @@ final class AppModel {
         projects[location.projectIndex].lastOpenedAt = .now
         activities[sessionID]?.unread = false
         commandPalettePresented = false
+        mainDestination = .workspace
         scheduleSave()
     }
 
@@ -449,6 +463,7 @@ final class AppModel {
         } else {
             selectedProjectID = projectID
             selectedSessionID = nil
+            mainDestination = .workspace
             scheduleSave()
         }
     }
@@ -471,7 +486,7 @@ final class AppModel {
         runtimeTasks.removeValue(forKey: sessionID)
         runtimes.removeValue(forKey: sessionID)?.terminate()
         stopPluginToolBridge(for: sessionID)
-        stalePluginSessions.remove(sessionID)
+        staleRuntimeSessions.remove(sessionID)
         activities.removeValue(forKey: sessionID)
         previewBuffers.removeValue(forKey: sessionID)
         previewFlushTasks.removeValue(forKey: sessionID)?.cancel()
@@ -501,7 +516,7 @@ final class AppModel {
             runtimeTasks.removeValue(forKey: sessionID)
             runtimes.removeValue(forKey: sessionID)?.terminate()
             stopPluginToolBridge(for: sessionID)
-            stalePluginSessions.remove(sessionID)
+            staleRuntimeSessions.remove(sessionID)
             activities.removeValue(forKey: sessionID)
             previewBuffers.removeValue(forKey: sessionID)
             previewFlushTasks.removeValue(forKey: sessionID)?.cancel()
@@ -657,6 +672,11 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("i", modifiers: [.command, .shift])
             .disabled(app.selectedSessionID == nil)
+
+            Button("Extensions & Mods") {
+                app.showExtensions()
+            }
+            .keyboardShortcut("e", modifiers: [.command, .shift])
         }
 
         CommandMenu("Conversation") {

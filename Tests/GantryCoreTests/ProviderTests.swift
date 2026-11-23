@@ -70,6 +70,8 @@ import Testing
     #expect(settings.defaultProviderID == nil)
     #expect(settings.appearance == nil)
     #expect(settings.plugins == nil)
+    #expect(settings.favoriteMarketplaces == nil)
+    #expect(settings.modsDirectory == nil)
     #expect(settings.defaultModel == .automatic)
 }
 
@@ -94,11 +96,13 @@ import Testing
     decoder.dateDecodingStrategy = .iso8601
     let session = try decoder.decode(ChatSession.self, from: json)
     #expect(session.providerID == nil)
+    #expect(session.modelUsage == nil)
+    #expect(session.claudeReportedCostUSD == nil)
     #expect(session.title == "Old session")
 }
 
 @Test func runtimeReceivesProviderEnvironment() async throws {
-    let root = FileManager.default.temporaryDirectory
+    let root = GantryTestTempRoot.url
         .appendingPathComponent("Gantry-provider-env-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     let executable = root.appendingPathComponent("fake-claude")
@@ -113,7 +117,7 @@ import Testing
     } > "$Gantry_TEST_ENV_CAPTURE"
     sleep 1
     """
-    try script.write(to: executable, atomically: true, encoding: .utf8)
+    try script.write(to: executable, atomically: false, encoding: .utf8)
     try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
     setenv("Gantry_TEST_ENV_CAPTURE", capture.path, 1)
     defer {

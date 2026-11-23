@@ -239,3 +239,9 @@ Scripts/
 ## Contributing
 
 Bug reports, feature requests, and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first, and use the issue and pull request templates so reports include what is needed to reproduce them. Report security issues privately through GitHub's Security tab rather than in a public issue.
+
+## License
+
+Gantry is source-available under the [Gantry Community License 1.0.0](LICENSE). You can use, modify, and share it freely, including inside a company. You may not sell it or ship it as part of a paid product or service, and you must credit **Gantry by Adrien Marette** with a link to this repository whenever you distribute it or a modified version.
+
+Gantry is an unofficial client and is not affiliated with Anthropic.

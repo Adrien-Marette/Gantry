@@ -23,7 +23,7 @@ public final class ClaudeRuntime: @unchecked Sendable {
 
     private struct PendingInitialize {
         var requestID: String
-        var continuation: CheckedContinuation<Void, Error>
+        var continuation: CheckedContinuation<ClaudeControlResponseInfo, Error>
     }
 
     public init(configuration: ClaudeLaunchConfiguration, logURL: URL? = nil) throws {
@@ -118,11 +118,15 @@ public final class ClaudeRuntime: @unchecked Sendable {
 
     // MARK: - Control handshake
 
-    public func initialize(timeout: TimeInterval = 25) async throws {
+    /// Sends the control handshake and returns its payload. The payload carries
+    /// the session's slash-command catalog, agents, models, and output styles.
+    @discardableResult
+    public func initialize(timeout: TimeInterval = 25) async throws -> ClaudeControlResponseInfo {
         let requestID = UUID().uuidString
         let data = try ClaudeWire.initializeRequest(requestID: requestID)
 
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+        return try await withCheckedThrowingContinuation {
+            (continuation: CheckedContinuation<ClaudeControlResponseInfo, Error>) in
             stateQueue.async {
                 guard !self.closed else {
                     continuation.resume(throwing: ClaudeRuntimeError.closed)
@@ -251,7 +255,7 @@ public final class ClaudeRuntime: @unchecked Sendable {
             if let pending = pendingInitialize, pending.requestID == response.requestID {
                 pendingInitialize = nil
                 if response.isSuccess {
-                    pending.continuation.resume()
+                    pending.continuation.resume(returning: response)
                 } else {
                     pending.continuation.resume(
                         throwing: ClaudeRuntimeError.initializationFailed(

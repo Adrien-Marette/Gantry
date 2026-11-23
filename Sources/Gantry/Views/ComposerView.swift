@@ -10,10 +10,43 @@ struct ComposerView: View {
     var glassNamespace: Namespace.ID?
 
     @FocusState private var focused: Bool
+    @State private var commandSelection = 0
+    @State private var commandMenuDismissed = false
+    @State private var keyboardScrollRevision = 0
     @Namespace private var ownGlassNamespace
 
     private var isRunning: Bool {
         activity?.isRunning == true
+    }
+
+    // MARK: - Slash commands
+
+    /// The typed slash token, for example `com` in `/com`. A space ends the
+    /// token so arguments can be typed freely.
+    private var slashQuery: String? {
+        let text = draft.wrappedValue
+        guard text.hasPrefix("/") else { return nil }
+        let token = text.dropFirst()
+        guard !token.contains(where: \.isWhitespace) else { return nil }
+        return String(token)
+    }
+
+    private var commandEntryActive: Bool {
+        slashQuery != nil && !commandMenuDismissed && !isRunning
+    }
+
+    private var commandCatalog: [ClaudeSlashCommand] {
+        activity?.slashCommands ?? []
+    }
+
+    private var filteredCommands: [ClaudeSlashCommand] {
+        guard let slashQuery else { return [] }
+        return commandCatalog.filter { $0.matches(slashQuery) }
+    }
+
+    private var clampedCommandSelection: Int {
+        guard !filteredCommands.isEmpty else { return 0 }
+        return min(max(commandSelection, 0), filteredCommands.count - 1)
     }
 
     private var draft: Binding<String> {
@@ -32,7 +65,32 @@ struct ComposerView: View {
     }
 
     var body: some View {
-        composerSurface
+        VStack(alignment: .leading, spacing: 9) {
+            if commandEntryActive {
+                SlashCommandMenu(
+                    commands: filteredCommands,
+                    selectedIndex: clampedCommandSelection,
+                    isLoading: activity?.isLoadingSlashCommands == true,
+                    errorMessage: activity?.slashCommandsError,
+                    query: slashQuery ?? "",
+                    catalogCount: commandCatalog.count,
+                    scrollRevision: keyboardScrollRevision,
+                    onSelect: { command in accept(command) },
+                    onHighlight: { command in
+                        guard let index = filteredCommands.firstIndex(where: { $0.id == command.id }) else {
+                            return
+                        }
+                        commandSelection = index
+                    },
+                    onRetry: { app.loadSlashCommands(for: session.id, retry: true) }
+                )
+                .frame(maxWidth: 610, alignment: .leading)
+                .transition(.opacity)
+            }
+
+            composerSurface
+        }
+        .animation(.easeOut(duration: 0.14), value: commandEntryActive)
     }
 
     private var composerSurface: some View {
@@ -51,6 +109,44 @@ struct ComposerView: View {
                     if isRunning { return .handled }
                     submit()
                     return .handled
+                }
+                .onKeyPress(.upArrow) {
+                    guard commandEntryActive else { return .ignored }
+                    moveCommandSelection(-1)
+                    return .handled
+                }
+                .onKeyPress(.downArrow) {
+                    guard commandEntryActive else { return .ignored }
+                    moveCommandSelection(1)
+                    return .handled
+                }
+                .onKeyPress(.escape) {
+                    guard commandEntryActive else { return .ignored }
+                    commandMenuDismissed = true
+                    return .handled
+                }
+                .onChange(of: slashQuery) { _, newValue in
+                    commandSelection = 0
+                    commandMenuDismissed = false
+                    keyboardScrollRevision &+= 1
+                    if newValue != nil {
+                        app.loadSlashCommands(for: session.id)
+                    }
+                }
+                .onChange(of: app.claudeAvailability) { _, availability in
+                    if slashQuery != nil, commandCatalog.isEmpty, availability.isReady {
+                        app.loadSlashCommands(for: session.id, retry: true)
+                    }
+                }
+                .onChange(of: isRunning) { _, running in
+                    if !running, slashQuery != nil, commandCatalog.isEmpty {
+                        app.loadSlashCommands(for: session.id, retry: true)
+                    }
+                }
+                .onAppear {
+                    if slashQuery != nil {
+                        app.loadSlashCommands(for: session.id)
+                    }
                 }
                 .padding(.horizontal, 4)
                 .padding(.top, 2)
@@ -73,6 +169,10 @@ struct ComposerView: View {
                     .padding(.trailing, 4)
                 } else {
                     HStack(spacing: 6) {
+                        HStack(spacing: 4) {
+                            KeyHint(text: "/")
+                            Text("commands")
+                        }
                         HStack(spacing: 4) {
                             KeyHint(text: "↵")
                             Text("send")
@@ -233,6 +333,12 @@ struct ComposerView: View {
     private func submit() {
         guard !isRunning, providerReady else { return }
 
+        // While a slash token is being typed, Return chooses from the picker
+        // instead of sending the partial command to Claude.
+        if commandEntryActive, handleCommandMenuSubmit() {
+            return
+        }
+
         guard canSend else {
             if !trimmedDraft.isEmpty, !app.claudeAvailability.isReady {
                 activity?.banner = "Claude Code isn't available yet."
@@ -244,5 +350,59 @@ struct ComposerView: View {
             app.drafts[session.id] = ""
             focused = true
         }
+    }
+
+    /// Returns true when the picker consumed the submission.
+    private func handleCommandMenuSubmit() -> Bool {
+        guard let query = slashQuery else { return false }
+
+        // A fully typed name (or alias) runs immediately, like the terminal.
+        if let exact = exactCommand(for: query) {
+            execute(exact)
+            return true
+        }
+
+        if !filteredCommands.isEmpty {
+            accept(filteredCommands[clampedCommandSelection])
+            return true
+        }
+
+        if activity?.isLoadingSlashCommands == true || commandCatalog.isEmpty {
+            // Keep the draft intact until the catalog or its error arrives.
+            return true
+        }
+
+        activity?.banner = "No command matches “/\(query)”."
+        return true
+    }
+
+    private func exactCommand(for query: String) -> ClaudeSlashCommand? {
+        let lowered = query.lowercased()
+        return commandCatalog.first { command in
+            command.name.lowercased() == lowered
+                || command.aliases.contains { $0.lowercased() == lowered }
+        }
+    }
+
+    private func execute(_ command: ClaudeSlashCommand) {
+        guard app.send(command.invocation, in: session.id) else { return }
+        app.drafts[session.id] = ""
+        focused = true
+    }
+
+    /// Completes the selected command in place so arguments can be typed.
+    /// Pressing Return again then sends it.
+    private func accept(_ command: ClaudeSlashCommand) {
+        app.drafts[session.id] = command.invocation + " "
+        commandMenuDismissed = true
+        focused = true
+    }
+
+    private func moveCommandSelection(_ delta: Int) {
+        let commands = filteredCommands
+        guard !commands.isEmpty else { return }
+        let next = clampedCommandSelection + delta
+        commandSelection = (next + commands.count) % commands.count
+        keyboardScrollRevision &+= 1
     }
 }

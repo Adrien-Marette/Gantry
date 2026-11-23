@@ -10,7 +10,7 @@ struct MarkdownTextView: View {
 
     init(_ text: String) {
         self.text = text
-        _blocks = State(initialValue: MarkdownParser.parse(text))
+        _blocks = State(initialValue: MarkdownBlockCache.blocks(for: text))
     }
 
     var body: some View {
@@ -21,7 +21,7 @@ struct MarkdownTextView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .onChange(of: text) { _, newValue in
-            blocks = MarkdownParser.parse(newValue)
+            blocks = MarkdownBlockCache.blocks(for: newValue)
         }
     }
 
@@ -498,12 +498,8 @@ struct AssistantTurnView: View {
                 }
             }
 
-            if isLive,
-               !(activity?.hasPendingPermission == true && activity?.preview.isEmpty != false) {
-                LiveAssistantPreview(
-                    preview: activity?.preview ?? StreamPreview(),
-                    fallbackStatus: activity?.statusText
-                )
+            if isLive {
+                LiveAssistantSection(activity: activity)
             }
 
             if let error = turn.errorText {
@@ -583,10 +579,25 @@ struct ReasoningDisclosure: View {
     }
 }
 
+/// Reads activity properties inside its own body, so streaming preview ticks
+/// invalidate this small subtree instead of the whole assistant turn.
+private struct LiveAssistantSection: View {
+    var activity: SessionActivity?
+
+    var body: some View {
+        if let activity,
+           !(activity.hasPendingPermission && activity.preview.isEmpty) {
+            LiveAssistantPreview(
+                preview: activity.preview,
+                fallbackStatus: activity.statusText
+            )
+        }
+    }
+}
+
 struct LiveAssistantPreview: View {
     var preview: StreamPreview
     var fallbackStatus: String?
-
     private var hasContent: Bool {
         !preview.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || !preview.thinking.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -965,5 +976,34 @@ struct ToolDetailView: View {
         case .none:
             EmptyView()
         }
+    }
+}
+
+// MARK: - Render caches
+
+private final class MarkdownBlocksBox {
+    let blocks: [MarkdownBlock]
+
+    init(_ blocks: [MarkdownBlock]) {
+        self.blocks = blocks
+    }
+}
+
+private enum MarkdownBlockCache {
+    static let cache: NSCache<NSString, MarkdownBlocksBox> = {
+        let cache = NSCache<NSString, MarkdownBlocksBox>()
+        cache.countLimit = 500
+        cache.totalCostLimit = 24 * 1_024 * 1_024
+        return cache
+    }()
+
+    static func blocks(for text: String) -> [MarkdownBlock] {
+        let key = text as NSString
+        if let cached = cache.object(forKey: key) {
+            return cached.blocks
+        }
+        let blocks = MarkdownParser.parse(text)
+        cache.setObject(MarkdownBlocksBox(blocks), forKey: key, cost: text.utf8.count)
+        return blocks
     }
 }

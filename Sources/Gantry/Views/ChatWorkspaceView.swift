@@ -307,6 +307,13 @@ struct ChatWorkspaceView: View {
                     }
                     .scrollIndicators(.never)
                     .scrollEdgeEffectStyle(.soft, for: .top)
+                    .background {
+                        PreviewScrollFollower(
+                            sessionID: session.id,
+                            proxy: proxy,
+                            isAtBottom: isAtBottom
+                        )
+                    }
                     .onScrollGeometryChange(for: Bool.self) { scrollGeometry in
                         let distance = scrollGeometry.contentSize.height
                             - (scrollGeometry.contentOffset.y + scrollGeometry.containerSize.height)
@@ -319,11 +326,6 @@ struct ChatWorkspaceView: View {
                     }
                     .onChange(of: pendingPermission?.requestID) { _, _ in
                         if isAtBottom { scrollToBottom(proxy, animated: true) }
-                    }
-                    .onChange(of: activity?.preview.text.count ?? 0) { _, _ in
-                        if isAtBottom {
-                            proxy.scrollTo("bottom", anchor: .bottom)
-                        }
                     }
                     .onChange(of: dockHeight) { _, _ in
                         if isAtBottom { scrollToBottom(proxy, animated: false) }
@@ -357,7 +359,8 @@ struct ChatWorkspaceView: View {
     }
 
     private var transcript: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let firstTurnID = session.turns.first?.id
+        return LazyVStack(alignment: .leading, spacing: 0) {
             Text(Format.dayLabel(session.createdAt).uppercased())
                 .font(.system(size: 9, weight: .semibold))
                 .tracking(0.8)
@@ -365,10 +368,10 @@ struct ChatWorkspaceView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, 22)
 
-            ForEach(Array(session.turns.enumerated()), id: \.element.id) { index, turn in
+            ForEach(session.turns) { turn in
                 if turn.role == .user {
                     UserTurnView(turn: turn)
-                        .padding(.top, index == 0 ? 0 : 28)
+                        .padding(.top, turn.id == firstTurnID ? 0 : 28)
                 } else {
                     AssistantTurnView(
                         turn: turn,
@@ -377,7 +380,7 @@ struct ChatWorkspaceView: View {
                         projectPath: project.path,
                         onRetry: { app.retryLastPrompt(sessionID: session.id) }
                     )
-                    .padding(.top, index == 0 ? 0 : 14)
+                    .padding(.top, turn.id == firstTurnID ? 0 : 14)
                 }
             }
         }
@@ -510,6 +513,30 @@ private struct DockHeightKey: PreferenceKey {
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = max(value, nextValue())
+    }
+}
+
+/// Observes only the streaming preview and scrolls the transcript, so preview
+/// ticks never invalidate the full conversation hierarchy.
+private struct PreviewScrollFollower: View {
+    @Environment(AppModel.self) private var app
+    var sessionID: UUID
+    var proxy: ScrollViewProxy
+    var isAtBottom: Bool
+
+    private var previewRevision: Int {
+        guard let preview = app.activities[sessionID]?.preview else { return 0 }
+        return preview.text.count &* 31 &+ preview.thinking.count
+    }
+
+    var body: some View {
+        Color.clear
+            .frame(width: 1, height: 1)
+            .allowsHitTesting(false)
+            .onChange(of: previewRevision) { _, _ in
+                guard isAtBottom else { return }
+                proxy.scrollTo("bottom", anchor: .bottom)
+            }
     }
 }
 

@@ -12,6 +12,7 @@ public final class ClaudeRuntime: @unchecked Sendable {
     private let errorPipe = Pipe()
     private let stateQueue = DispatchQueue(label: "fr.soundwise.Gantry.claude-runtime")
     private let logURL: URL?
+    private let logFormatter = ISO8601DateFormatter()
     private var logHandle: FileHandle?
     private var outputBuffer = Data()
     private var errorBuffer = Data()
@@ -222,15 +223,27 @@ public final class ClaudeRuntime: @unchecked Sendable {
     private func consumeOutput(_ data: Data) {
         guard !closed else { return }
         outputBuffer.append(data)
-        while let newline = outputBuffer.firstIndex(of: 0x0A) {
-            let lineData = Data(outputBuffer[outputBuffer.startIndex..<newline])
-            outputBuffer.removeSubrange(outputBuffer.startIndex...newline)
-            guard !lineData.isEmpty else { continue }
-            let line = String(decoding: lineData, as: UTF8.self)
+        drainCompleteLines(&outputBuffer) { line in
             for event in ClaudeStreamParser.parse(line: line) {
                 handleParsedEvent(event)
             }
         }
+    }
+
+    /// Consumes every complete newline-terminated line in one pass, removing the
+    /// consumed prefix once instead of shifting the buffer after each line.
+    private func drainCompleteLines(_ buffer: inout Data, _ body: (String) -> Void) {
+        guard let lastNewline = buffer.lastIndex(of: 0x0A) else { return }
+        let consumedEnd = buffer.index(after: lastNewline)
+        var start = buffer.startIndex
+        while start < consumedEnd {
+            guard let newline = buffer[start..<consumedEnd].firstIndex(of: 0x0A) else { break }
+            if newline > start {
+                body(String(decoding: buffer[start..<newline], as: UTF8.self))
+            }
+            start = buffer.index(after: newline)
+        }
+        buffer.removeSubrange(buffer.startIndex..<consumedEnd)
     }
 
     private func handleParsedEvent(_ event: ClaudeEvent) {
@@ -254,12 +267,7 @@ public final class ClaudeRuntime: @unchecked Sendable {
 
     private func consumeError(_ data: Data) {
         errorBuffer.append(data)
-        while let newline = errorBuffer.firstIndex(of: 0x0A) {
-            let lineData = Data(errorBuffer[errorBuffer.startIndex..<newline])
-            errorBuffer.removeSubrange(errorBuffer.startIndex...newline)
-            let line = String(decoding: lineData, as: UTF8.self)
-            appendStderr(line)
-        }
+        drainCompleteLines(&errorBuffer) { appendStderr($0) }
     }
 
     private func appendStderr(_ line: String) {
@@ -278,14 +286,24 @@ public final class ClaudeRuntime: @unchecked Sendable {
         sawExit = true
         closed = true
         if !errorBuffer.isEmpty {
-            appendStderr(String(decoding: errorBuffer, as: UTF8.self))
-            errorBuffer.removeAll(keepingCapacity: false)
+            drainCompleteLines(&errorBuffer) { appendStderr($0) }
+            if !errorBuffer.isEmpty {
+                appendStderr(String(decoding: errorBuffer, as: UTF8.self))
+                errorBuffer.removeAll(keepingCapacity: false)
+            }
         }
         if !outputBuffer.isEmpty {
-            let trailing = String(decoding: outputBuffer, as: UTF8.self)
-            outputBuffer.removeAll(keepingCapacity: false)
-            for event in ClaudeStreamParser.parse(line: trailing) {
-                handleParsedEvent(event)
+            drainCompleteLines(&outputBuffer) { line in
+                for event in ClaudeStreamParser.parse(line: line) {
+                    handleParsedEvent(event)
+                }
+            }
+            if !outputBuffer.isEmpty {
+                let trailing = String(decoding: outputBuffer, as: UTF8.self)
+                outputBuffer.removeAll(keepingCapacity: false)
+                for event in ClaudeStreamParser.parse(line: trailing) {
+                    handleParsedEvent(event)
+                }
             }
         }
         if let pending = pendingInitialize {
@@ -304,7 +322,7 @@ public final class ClaudeRuntime: @unchecked Sendable {
 
     private func log(_ message: String) {
         guard let logHandle else { return }
-        let timestamp = ISO8601DateFormatter().string(from: Date())
+        let timestamp = logFormatter.string(from: Date())
         let text = "[\(timestamp)] [\(id.uuidString.prefix(8))] \(message)\n"
         try? logHandle.write(contentsOf: Data(text.utf8))
     }

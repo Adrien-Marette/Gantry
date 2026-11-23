@@ -1,7 +1,46 @@
+import Foundation
 import SwiftUI
+
+private final class AttributedStringBox {
+    let value: AttributedString
+
+    init(_ value: AttributedString) {
+        self.value = value
+    }
+}
+
+private enum MarkdownRenderCache {
+    static let inline: NSCache<NSString, AttributedStringBox> = {
+        let cache = NSCache<NSString, AttributedStringBox>()
+        cache.countLimit = 2_000
+        cache.totalCostLimit = 8 * 1_024 * 1_024
+        return cache
+    }()
+
+    static let code: NSCache<NSString, AttributedStringBox> = {
+        let cache = NSCache<NSString, AttributedStringBox>()
+        cache.countLimit = 256
+        cache.totalCostLimit = 32 * 1_024 * 1_024
+        return cache
+    }()
+}
 
 enum InlineMarkdown {
     static func attributed(_ text: String) -> AttributedString {
+        let key = text as NSString
+        if let cached = MarkdownRenderCache.inline.object(forKey: key) {
+            return cached.value
+        }
+        let value = parse(text)
+        MarkdownRenderCache.inline.setObject(
+            AttributedStringBox(value),
+            forKey: key,
+            cost: text.utf8.count
+        )
+        return value
+    }
+
+    private static func parse(_ text: String) -> AttributedString {
         var result: AttributedString
         do {
             result = try AttributedString(
@@ -35,6 +74,21 @@ enum InlineMarkdown {
 
 enum CodeSyntax {
     static func highlighted(_ code: String, language: String?) -> AttributedString {
+        let normalizedLanguage = (language ?? "").lowercased()
+        let key = "\u{0}\(normalizedLanguage)\u{0}\(code)" as NSString
+        if let cached = MarkdownRenderCache.code.object(forKey: key) {
+            return cached.value
+        }
+        let value = highlightedUncached(code, language: language)
+        MarkdownRenderCache.code.setObject(
+            AttributedStringBox(value),
+            forKey: key,
+            cost: code.utf8.count
+        )
+        return value
+    }
+
+    private static func highlightedUncached(_ code: String, language: String?) -> AttributedString {
         if code.count > 30_000 {
             var plain = AttributedString(code)
             plain.foregroundColor = Palette.codePlain

@@ -13,6 +13,7 @@ struct QuestionRequestCard: View {
 
     @State private var answers: [Int: ClaudeQuestionAnswer] = [:]
     @State private var currentIndex = 0
+    @State private var questionContentHeight: CGFloat = 320
     @FocusState private var focusedField: Field?
     @Namespace private var ownGlassNamespace
 
@@ -70,7 +71,18 @@ struct QuestionRequestCard: View {
             if questionnaire.questions.count > 1 {
                 navigator
             }
-            questionBlock(currentQuestion, index: currentIndex)
+            ScrollView {
+                questionBlock(currentQuestion, index: currentIndex)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .onGeometryChange(for: CGFloat.self) { geometry in
+                        min(geometry.size.height, 320)
+                    } action: { height in
+                        questionContentHeight = height
+                    }
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(maxHeight: questionContentHeight)
+            .id(currentIndex)
             footer
         }
         .padding(16)
@@ -264,6 +276,7 @@ struct QuestionRequestCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(option.label)
+        .accessibilityHint(Text(option.description ?? ""))
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 

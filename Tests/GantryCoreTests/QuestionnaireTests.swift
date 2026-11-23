@@ -101,6 +101,13 @@ import Testing
     #expect(answer.validationMessage(for: question) == nil)
 }
 
+@Test func singleChoiceAnswerPreservesPunctuation() {
+    let label = #"Use "A, B""#
+    let question = ClaudeQuestion(question: "Pick one", options: [.init(label: label)])
+    let answer = ClaudeQuestionAnswer(selectedOptions: [label])
+    #expect(answer.resolvedValue(for: question) == label)
+}
+
 @Test func freeTextOverridesChoiceSelection() {
     let question = ClaudeQuestion(
         question: "Pick one",

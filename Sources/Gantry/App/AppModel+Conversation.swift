@@ -292,13 +292,18 @@ extension AppModel {
         guard let location = locateSession(sessionID) else {
             throw RuntimeHostError.sessionMissing
         }
-        let project = projects[location.projectIndex]
-        let session = project.sessions[location.sessionIndex]
-        let provider = provider(for: session)
+        let provider = provider(for: projects[location.projectIndex].sessions[location.sessionIndex])
         let apiKey = try await apiKey(for: provider)
         // The Keychain read can suspend long enough for a plugin change or a
         // provider switch to recycle this start; never publish its process.
         try Task.checkCancellation()
+
+        // Model and permission mode can change while the Keychain read is pending.
+        guard let currentLocation = locateSession(sessionID) else {
+            throw RuntimeHostError.sessionMissing
+        }
+        let project = projects[currentLocation.projectIndex]
+        let session = project.sessions[currentLocation.sessionIndex]
 
         var extraArguments: [String] = []
         do {

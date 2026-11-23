@@ -356,14 +356,16 @@ struct ComposerView: View {
     private func handleCommandMenuSubmit() -> Bool {
         guard let query = slashQuery else { return false }
 
-        // A fully typed name (or alias) runs immediately, like the terminal.
-        if let exact = exactCommand(for: query) {
-            execute(exact)
-            return true
-        }
-
-        if !filteredCommands.isEmpty {
-            accept(filteredCommands[clampedCommandSelection])
+        let commands = filteredCommands
+        if !commands.isEmpty {
+            let highlighted = commands[clampedCommandSelection]
+            let lowered = query.lowercased()
+            if highlighted.name.lowercased() == lowered
+                || highlighted.aliases.contains(where: { $0.lowercased() == lowered }) {
+                execute(highlighted)
+            } else {
+                accept(highlighted)
+            }
             return true
         }
 
@@ -374,14 +376,6 @@ struct ComposerView: View {
 
         activity?.banner = "No command matches “/\(query)”."
         return true
-    }
-
-    private func exactCommand(for query: String) -> ClaudeSlashCommand? {
-        let lowered = query.lowercased()
-        return commandCatalog.first { command in
-            command.name.lowercased() == lowered
-                || command.aliases.contains { $0.lowercased() == lowered }
-        }
     }
 
     private func execute(_ command: ClaudeSlashCommand) {

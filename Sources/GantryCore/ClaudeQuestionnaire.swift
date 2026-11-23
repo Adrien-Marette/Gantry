@@ -194,7 +194,7 @@ public struct ClaudeQuestionAnswer: Hashable, Sendable {
             if !other.isEmpty { return other }
             let labels = question.options.map(\.label).filter(selectedOptions.contains)
             guard !labels.isEmpty else { return nil }
-            return ClaudeQuestionnaire.joinedSelection(labels)
+            return question.multiSelect ? ClaudeQuestionnaire.joinedSelection(labels) : labels.first
         case .text:
             let text = trimmed(customText)
             return text.isEmpty ? nil : text

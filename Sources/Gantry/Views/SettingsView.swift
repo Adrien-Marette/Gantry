@@ -32,8 +32,7 @@ struct SettingsView: View {
                 .tabItem { Label("About", systemImage: "info.circle") }
                 .tag(Tab.about)
         }
-        .frame(width: 600, height: 420)
-        .background(Palette.canvasGradient)
+        .frame(width: 620, height: 460)
         .tint(Palette.accent)
         .preferredColorScheme(app.appearance.colorScheme)
         .onAppear { consumeRequestedTab() }
@@ -53,7 +52,7 @@ private struct GeneralSettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 16) {
                 settingsIntro("Appearance, defaults for new conversations, and where Gantry keeps its data.")
 
                 settingsSection("Appearance") {
@@ -145,7 +144,7 @@ private struct GeneralSettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 2)
             }
-            .padding(26)
+            .padding(24)
         }
     }
 }
@@ -155,14 +154,14 @@ private struct ClaudeSettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 16) {
                 settingsIntro("Gantry runs the Claude Code you already have. Authentication stays with the CLI.")
 
                 settingsSection("Installation") {
-                    HStack(spacing: 11) {
+                    HStack(spacing: 12) {
                         Circle()
                             .fill(statusColor)
-                            .frame(width: 7, height: 7)
+                            .frame(width: 6, height: 6)
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(statusTitle)
@@ -189,12 +188,12 @@ private struct ClaudeSettingsView: View {
                         }
                         .font(Typo.caption)
                     }
-                    .padding(.horizontal, 13)
-                    .padding(.vertical, 11)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                 }
 
                 settingsSection("Executable") {
-                    VStack(alignment: .leading, spacing: 9) {
+                    VStack(alignment: .leading, spacing: 8) {
                         Text(app.settings.claudePathOverride ?? "Automatic detection")
                             .font(Typo.monoSmall)
                             .foregroundStyle(Palette.secondaryInk)
@@ -218,8 +217,8 @@ private struct ClaudeSettingsView: View {
                             Spacer()
                         }
                     }
-                    .padding(.horizontal, 13)
-                    .padding(.vertical, 11)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                 }
 
                 HStack(alignment: .top, spacing: 8) {
@@ -234,7 +233,7 @@ private struct ClaudeSettingsView: View {
                 }
                 .padding(.horizontal, 2)
             }
-            .padding(26)
+            .padding(24)
         }
     }
 
@@ -278,7 +277,7 @@ private struct ClaudeSettingsView: View {
 
 private struct AboutSettingsView: View {
     var body: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 16) {
             Spacer(minLength: 4)
             BrandMark(size: 58)
             VStack(spacing: 4) {
@@ -290,26 +289,22 @@ private struct AboutSettingsView: View {
                     .foregroundStyle(Palette.tertiaryInk)
             }
 
-            Text("A native, quieter workspace for Claude Code.\nBuilt with SwiftUI and Liquid Glass.")
+            Text("A native macOS workspace for Claude Code.\nBuilt with SwiftUI and Liquid Glass.")
                 .font(Typo.caption)
                 .foregroundStyle(Palette.secondaryInk)
                 .multilineTextAlignment(.center)
                 .lineSpacing(3)
 
-            HStack(spacing: 6) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 9))
-                    .foregroundStyle(Palette.accent)
-                Text("An unofficial client. Not affiliated with Anthropic.")
-                    .font(Typo.micro)
-                    .foregroundStyle(Palette.faintInk)
-            }
-            .padding(.top, 4)
+            Text("An unofficial client. Not affiliated with Anthropic.")
+                .font(Typo.micro)
+                .foregroundStyle(Palette.tertiaryInk)
+                .multilineTextAlignment(.center)
+                .padding(.top, 4)
 
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(26)
+        .padding(24)
     }
 }
 
@@ -345,11 +340,11 @@ func settingsRow<Content: View>(
         Spacer()
         content()
     }
-    .padding(.horizontal, 13)
-    .padding(.vertical, 10)
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
 }
 
 var settingsDivider: some View {
     Hairline()
-        .padding(.leading, 13)
+        .padding(.leading, 16)
 }

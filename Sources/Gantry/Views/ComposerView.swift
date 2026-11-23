@@ -7,9 +7,10 @@ struct ComposerView: View {
     var project: Project
     var activity: SessionActivity?
     var providerReady = true
+    var glassNamespace: Namespace.ID?
 
     @FocusState private var focused: Bool
-    @State private var isHoveringSend = false
+    @Namespace private var ownGlassNamespace
 
     private var isRunning: Bool {
         activity?.isRunning == true
@@ -31,10 +32,14 @@ struct ComposerView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        composerSurface
+    }
+
+    private var composerSurface: some View {
+        VStack(alignment: .leading, spacing: 8) {
             TextField(placeholder, text: draft, axis: .vertical)
                 .textFieldStyle(.plain)
-                .font(.system(size: 15, weight: .regular))
+                .font(.system(size: 14, weight: .regular))
                 .foregroundStyle(Palette.ink)
                 .lineSpacing(3)
                 .lineLimit(1...9)
@@ -47,77 +52,57 @@ struct ComposerView: View {
                     submit()
                     return .handled
                 }
-                .onSubmit { submit() }
                 .padding(.horizontal, 4)
                 .padding(.top, 2)
                 .fixedSize(horizontal: false, vertical: true)
 
-            HStack(spacing: 7) {
+            HStack(spacing: 8) {
                 permissionMenu
                 modelMenu
 
                 Spacer(minLength: 8)
 
                 if isRunning {
-                    HStack(spacing: 7) {
-                        ActivityDots(color: Palette.accent, size: 2.8)
-                        Text(activity?.isStopping == true ? "Stopping…" : (activity?.statusText ?? "Working"))
+                    HStack(spacing: 8) {
+                        LiveIndicator(color: Palette.accent, size: 12)
+                        Text(activity?.isStopping == true ? "Stopping" : (activity?.statusText ?? "Working"))
                             .font(Typo.micro)
                             .foregroundStyle(Palette.secondaryInk)
                             .lineLimit(1)
                     }
-                    .padding(.trailing, 2)
+                    .padding(.trailing, 4)
                 } else {
-                    HStack(spacing: 4) {
-                        Text("↵")
-                            .font(.system(size: 9, weight: .medium, design: .rounded))
-                        Text("send")
-                            .font(.system(size: 9.5))
-                        Text("·")
-                            .font(.system(size: 9))
-                        Text("⇧↵")
-                            .font(.system(size: 9, weight: .medium, design: .rounded))
-                        Text("new line")
-                            .font(.system(size: 9.5))
+                    HStack(spacing: 6) {
+                        HStack(spacing: 4) {
+                            KeyHint(text: "↵")
+                            Text("send")
+                        }
+                        HStack(spacing: 4) {
+                            KeyHint(text: "⇧↵")
+                            Text("new line")
+                        }
                     }
-                    .foregroundStyle(Palette.faintInk)
-                    .padding(.trailing, 3)
+                    .font(Typo.micro)
+                    .foregroundStyle(Palette.tertiaryInk)
+                    .padding(.trailing, 4)
                 }
 
                 primaryButton
             }
-            .padding(.horizontal, 2)
-            .padding(.bottom, 1)
+            .padding(.horizontal, 4)
         }
-        .padding(.horizontal, 13)
-        .padding(.top, 10)
-        .padding(.bottom, 9)
-        .glassEffect(
-            .regular
-                .tint(Palette.accent.opacity(focused ? 0.075 : 0.035))
-                .interactive(),
-            in: RoundedRectangle(cornerRadius: 22, style: .continuous)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(
-                    focused ? Palette.accent.opacity(0.42) : Palette.lineStrong,
-                    lineWidth: focused ? 1.0 : 0.9
-                )
-        )
-        .overlay(alignment: .top) {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.30), Color.white.opacity(0.0)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ),
-                    lineWidth: 0.8
-                )
-                .allowsHitTesting(false)
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 12)
+        .glassPanel(radius: 20, interactive: true)
+        .glassEffectID("composer", in: glassNamespace ?? ownGlassNamespace)
+        .overlay {
+            if focused {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(Palette.accent, lineWidth: 2)
+                    .allowsHitTesting(false)
+            }
         }
-        .shadow(color: Palette.shadow.opacity(0.42), radius: 22, y: 9)
         .animation(.easeOut(duration: 0.16), value: focused)
         .onAppear {
             if session.turns.isEmpty {
@@ -134,12 +119,12 @@ struct ComposerView: View {
             return "Add an API key to use this provider"
         }
         if isRunning {
-            return "Claude is working…"
+            return "Claude is working"
         }
         if session.turns.isEmpty {
-            return "Ask Claude to build, fix, or explain…"
+            return "Ask Claude to build, fix, or explain"
         }
-        return "Message Claude…"
+        return "Message Claude"
     }
 
     private var permissionMenu: some View {
@@ -157,7 +142,7 @@ struct ComposerView: View {
             Text(session.permissionMode.detail)
             Text(permissionHelp)
         } label: {
-            ControlPillLabel(
+            ControlLabel(
                 systemName: session.permissionMode.symbol,
                 title: session.permissionMode.title,
                 tint: Palette.accent
@@ -187,8 +172,8 @@ struct ComposerView: View {
                 Text("Active: \(actual)")
             }
         } label: {
-            ControlPillLabel(
-                systemName: "sparkles",
+            ControlLabel(
+                systemName: "cpu",
                 title: session.displayModelName,
                 tint: Palette.secondaryInk
             )
@@ -211,44 +196,43 @@ struct ComposerView: View {
     }
 
     private var primaryButton: some View {
-        Button {
+        Group {
             if isRunning {
-                app.stop(sessionID: session.id)
+                Button {
+                    app.stop(sessionID: session.id)
+                } label: {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                        .frame(width: 16, height: 16)
+                        .padding(7)
+                }
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .help("Stop (⌘.)")
+                .accessibilityLabel("Stop Claude")
             } else {
-                submit()
+                Button {
+                    submit()
+                } label: {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 12, weight: .semibold))
+                        .frame(width: 16, height: 16)
+                        .padding(7)
+                }
+                .buttonStyle(.glassProminent)
+                .buttonBorderShape(.circle)
+                .tint(Palette.accent)
+                .disabled(!canSend)
+                .opacity(canSend ? 1 : 0.45)
+                .help("Send")
+                .accessibilityLabel("Send message")
             }
-        } label: {
-            ZStack {
-                Circle()
-                    .fill(isRunning ? Palette.ink.opacity(0.82) : Palette.accent)
-                    .overlay(
-                        Circle()
-                            .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.7)
-                    )
-                    .shadow(
-                        color: (isRunning ? Color.black : Palette.accent).opacity(0.22),
-                        radius: 7,
-                        y: 2
-                    )
-
-                Image(systemName: isRunning ? "stop.fill" : "arrow.up")
-                    .font(.system(size: isRunning ? 10 : 13, weight: .semibold))
-                    .foregroundStyle(Color.white)
-            }
-            .frame(width: 30, height: 30)
-            .scaleEffect(isHoveringSend ? 1.045 : 1)
-            .opacity(canSend || isRunning ? 1 : 0.34)
         }
-        .buttonStyle(.plain)
-        .disabled(!canSend && !isRunning)
-        .onHover { isHoveringSend = $0 }
-        .animation(.easeOut(duration: 0.14), value: isHoveringSend)
-        .help(isRunning ? "Stop (⌘.)" : "Send")
-        .accessibilityLabel(isRunning ? "Stop Claude" : "Send message")
     }
 
     private func submit() {
         guard !isRunning, providerReady else { return }
+
         guard canSend else {
             if !trimmedDraft.isEmpty, !app.claudeAvailability.isReady {
                 activity?.banner = "Claude Code isn't available yet."

@@ -75,9 +75,10 @@ extension AppModel {
     // MARK: - Mods folder
 
     func resolveModsDirectory() -> URL {
-        if let stored = settings.modsDirectory?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .nilIfEmpty {
+        // Preserve the stored path exactly, including leading or trailing
+        // spaces in a folder name; only an empty setting uses the default.
+        if let stored = settings.modsDirectory,
+           !stored.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return URL(fileURLWithPath: stored, isDirectory: true)
         }
         let home = FileManager.default.homeDirectoryForCurrentUser

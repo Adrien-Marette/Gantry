@@ -13,7 +13,7 @@ struct ExtensionsSourcesView: View {
     var body: some View {
         VStack(spacing: 0) {
             controls
-                .padding(.horizontal, 28)
+                .padding(.horizontal, 32)
                 .padding(.bottom, 12)
 
             if model.marketplaces.isEmpty {
@@ -35,7 +35,7 @@ struct ExtensionsSourcesView: View {
                     }
                     .frame(maxWidth: 980)
                     .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 28)
+                    .padding(.horizontal, 32)
                     .padding(.bottom, 24)
                 }
                 .scrollIndicators(.never)
@@ -54,7 +54,7 @@ struct ExtensionsSourcesView: View {
             }
             Button("Cancel", role: .cancel) { pendingRemove = nil }
         } message: { marketplace in
-            Text("“\(marketplace.name)” will be removed from Claude Code's marketplace list. Extensions already installed from it stay installed. Favorite entries for this source are removed.")
+            Text("“\(marketplace.name)” will be removed from Claude Code's marketplace list. Claude Code decides what happens to extensions installed from it. Favorite entries for this source are removed.")
         }
     }
 
@@ -111,11 +111,7 @@ struct ExtensionsSourcesView: View {
                 Image(systemName: isFavorite ? "star.fill" : "star")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(isFavorite ? Palette.accent : Palette.tertiaryInk)
-                    .frame(width: 26, height: 26)
-                    .background(
-                        RoundedRectangle(cornerRadius: 7, style: .continuous)
-                            .fill(isFavorite ? Palette.accent.opacity(0.09) : Color.clear)
-                    )
+                    .frame(width: 24, height: 24)
             }
             .buttonStyle(.plain)
             .help(isFavorite ? "Remove from favorites" : "Add to favorites")
@@ -123,19 +119,19 @@ struct ExtensionsSourcesView: View {
 
             ExtensionIconTile(
                 symbol: "shippingbox",
-                tint: isFavorite ? Palette.accent : Palette.info
+                size: 32
             )
             .padding(.top, 1)
 
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 7) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
                     Text(marketplace.name)
                         .font(Typo.headline)
                         .foregroundStyle(Palette.ink)
                         .lineLimit(1)
 
                     if isFavorite {
-                        ExtensionBadge(text: "Favorite", color: Palette.accent)
+                        ExtensionBadge(text: "Favorite", color: Palette.tertiaryInk)
                     }
                 }
 
@@ -148,7 +144,8 @@ struct ExtensionsSourcesView: View {
 
                 Text("\(count) extension\(count == 1 ? "" : "s") available")
                     .font(Typo.micro)
-                    .foregroundStyle(Palette.faintInk)
+                    .monospacedDigit()
+                    .foregroundStyle(Palette.tertiaryInk)
             }
 
             Spacer(minLength: 8)
@@ -166,28 +163,20 @@ struct ExtensionsSourcesView: View {
                             .controlSize(.small)
                     } else {
                         Image(systemName: "ellipsis")
-                            .font(.system(size: 9.5, weight: .semibold))
+                            .font(.system(size: 11, weight: .medium))
                     }
                 }
                 .foregroundStyle(Palette.tertiaryInk)
-                .frame(width: 24, height: 22)
-                .background(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(Palette.surface.opacity(0.6))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .strokeBorder(Palette.lineStrong, lineWidth: 0.7)
-                        )
-                )
+                .frame(width: 24, height: 24)
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
             .disabled(model.isMutating)
         }
-        .padding(.horizontal, 13)
+        .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .surfaceCard(radius: 12)
+        .surfaceCard(radius: Radius.card)
     }
 
     private func refreshAll() {
@@ -289,21 +278,20 @@ struct AddMarketplaceSheet: View {
                         )
                     }
                 }
-                .padding(22)
+                .padding(24)
             }
 
             Hairline()
             footer
         }
         .frame(width: 560, height: 440)
-        .background(Palette.canvasGradient)
         .interactiveDismissDisabled(isWorking)
         .task { sourceFocused = true }
     }
 
     private var header: some View {
-        HStack(spacing: 11) {
-            ExtensionIconTile(symbol: "shippingbox", tint: Palette.info, size: 34)
+        HStack(spacing: 12) {
+            ExtensionIconTile(symbol: "shippingbox", size: 32)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Add Marketplace Source")
@@ -316,14 +304,14 @@ struct AddMarketplaceSheet: View {
 
             Spacer()
 
-            IconButton(systemName: "xmark", help: "Close", size: 10, frame: 24) {
+            IconButton(systemName: "xmark", help: "Close", size: 11, frame: 28) {
                 dismiss()
             }
             .disabled(isWorking)
         }
-        .padding(.horizontal, 22)
-        .padding(.top, 18)
-        .padding(.bottom, 14)
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
+        .padding(.bottom, 16)
     }
 
     private var footer: some View {
@@ -350,8 +338,8 @@ struct AddMarketplaceSheet: View {
             }
             .disabled(isWorking || source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
     }
 
     private func fieldSection<Content: View>(
@@ -372,12 +360,7 @@ struct AddMarketplaceSheet: View {
     }
 
     private var fieldBackground: some View {
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .fill(Palette.surfaceSubtle)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(Palette.line, lineWidth: 0.7)
-            )
+        FieldBackground()
     }
 
     private func add() {

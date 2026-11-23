@@ -79,7 +79,7 @@ enum MainDestination: Hashable {
 @MainActor
 @Observable
 final class AppModel {
-    static let appVersion = "0.2.0"
+    static let appVersion = "0.3.5"
 
     var projects: [Project]
     var selectedProjectID: UUID?
@@ -197,9 +197,11 @@ final class AppModel {
 
         snapshot.settings.favoriteMarketplaces =
             Self.normalizedFavoriteMarketplaces(snapshot.settings.favoriteMarketplaces)
-        snapshot.settings.modsDirectory = snapshot.settings.modsDirectory?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .nilIfEmpty
+        // Keep the stored path byte-for-byte; only drop an empty setting, so a
+        // folder whose name begins or ends with a space still resolves.
+        snapshot.settings.modsDirectory = snapshot.settings.modsDirectory.flatMap {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0
+        }
 
         self.projects = snapshot.projects
         self.settings = snapshot.settings

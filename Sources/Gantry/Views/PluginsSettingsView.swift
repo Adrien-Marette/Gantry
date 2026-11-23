@@ -11,7 +11,7 @@ struct PluginsSettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 16) {
                 settingsIntro("Connect code-host integrations so Gantry can browse pull requests, post comments, and read CI checks for your projects. Extensions and mods for Claude Code live on the Extensions page.")
 
                 if app.plugins.isEmpty {
@@ -26,7 +26,7 @@ struct PluginsSettingsView: View {
                     errorNotice(errorMessage)
                 }
             }
-            .padding(26)
+            .padding(24)
         }
         .sheet(item: $editingKind) { kind in
             PluginConnectionEditor(kind: kind)
@@ -54,7 +54,7 @@ struct PluginsSettingsView: View {
 
             VStack(spacing: 0) {
                 ForEach(Array(PluginKind.allCases.enumerated()), id: \.element.id) { index, kind in
-                    HStack(spacing: 11) {
+                    HStack(spacing: 12) {
                         pluginIcon(kind)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(kind.title)
@@ -71,8 +71,8 @@ struct PluginsSettingsView: View {
                         }
                         .font(Typo.caption)
                     }
-                    .padding(.horizontal, 13)
-                    .padding(.vertical, 11)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                     if index < PluginKind.allCases.count - 1 {
                         settingsDivider
                     }
@@ -106,24 +106,16 @@ struct PluginsSettingsView: View {
     }
 
     private func pluginRow(_ plugin: PluginConnection) -> some View {
-        HStack(spacing: 11) {
+        HStack(spacing: 12) {
             pluginIcon(plugin.kind)
 
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     Text(plugin.name)
                         .font(Typo.captionMedium)
                         .foregroundStyle(Palette.ink)
                         .lineLimit(1)
-                    Text("Connected")
-                        .font(.system(size: 8, weight: .semibold))
-                        .foregroundStyle(Palette.success)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1.5)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(Palette.success.opacity(0.09))
-                        )
+                    QuietBadge(text: "Connected", color: Palette.success)
                 }
 
                 Text(PluginPresentation.summary(for: plugin))
@@ -159,8 +151,8 @@ struct PluginsSettingsView: View {
             .menuIndicator(.hidden)
             .frame(width: 20)
         }
-        .padding(.horizontal, 13)
-        .padding(.vertical, 11)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
     }
 
     private var addPluginMenu: some View {
@@ -182,17 +174,15 @@ struct PluginsSettingsView: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "plus")
-                    .font(.system(size: 10.5, weight: .semibold))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Palette.accent)
-                    .frame(width: 23, height: 23)
-                    .background(Circle().fill(Palette.accent.opacity(0.09)))
                 Text("Add Another Account")
                     .font(Typo.captionMedium)
                     .foregroundStyle(Palette.secondaryInk)
                 Spacer()
             }
-            .padding(.horizontal, 13)
-            .padding(.vertical, 9)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
             .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)
@@ -211,23 +201,19 @@ struct PluginsSettingsView: View {
     }
 
     private func pluginIcon(_ kind: PluginKind) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(PluginPresentation.tint(for: kind).opacity(0.10))
-            Image(systemName: PluginPresentation.symbol(for: kind))
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(PluginPresentation.tint(for: kind))
-        }
-        .frame(width: 32, height: 32)
+        Image(systemName: PluginPresentation.symbol(for: kind))
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(Palette.secondaryInk)
+            .frame(width: 20, height: 20)
     }
 
     private var keychainNote: some View {
-        HStack(alignment: .top, spacing: 9) {
+        HStack(alignment: .top, spacing: 8) {
             Image(systemName: "key.fill")
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Palette.accent)
+                .foregroundStyle(Palette.tertiaryInk)
                 .padding(.top, 1)
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("Access tokens live in Apple Keychain.")
                     .font(Typo.captionMedium)
                     .foregroundStyle(Palette.secondaryInk)
@@ -269,13 +255,13 @@ struct PluginsSettingsView: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(10)
+        .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
+            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
                 .fill(Palette.danger.opacity(0.06))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .strokeBorder(Palette.danger.opacity(0.20), lineWidth: 0.7)
+                    RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                        .strokeBorder(Palette.danger.opacity(0.20), lineWidth: 1)
                 )
         )
     }
@@ -346,7 +332,7 @@ private struct PluginConnectionEditor: View {
                         TextField("https://github.com", text: $serverURL)
                             .textFieldStyle(.plain)
                             .font(Typo.body)
-                            .padding(.horizontal, 10)
+                            .padding(.horizontal, 12)
                             .padding(.vertical, 8)
                             .background(fieldBackground)
                     }
@@ -358,7 +344,7 @@ private struct PluginConnectionEditor: View {
                         TextField("Personal account", text: $displayName)
                             .textFieldStyle(.plain)
                             .font(Typo.body)
-                            .padding(.horizontal, 10)
+                            .padding(.horizontal, 12)
                             .padding(.vertical, 8)
                             .background(fieldBackground)
                     }
@@ -370,7 +356,7 @@ private struct PluginConnectionEditor: View {
                         SecureField("Paste access token", text: $token)
                             .textFieldStyle(.plain)
                             .font(Typo.body)
-                            .padding(.horizontal, 10)
+                            .padding(.horizontal, 12)
                             .padding(.vertical, 8)
                             .background(fieldBackground)
                             .focused($tokenFocused)
@@ -410,64 +396,59 @@ private struct PluginConnectionEditor: View {
                                 .foregroundStyle(Palette.danger)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
-                        .padding(10)
+                        .padding(12)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
                                 .fill(Palette.danger.opacity(0.06))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                        .strokeBorder(Palette.danger.opacity(0.20), lineWidth: 0.7)
+                                    RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                                        .strokeBorder(Palette.danger.opacity(0.20), lineWidth: 1)
                                 )
                         )
                     }
                 }
-                .padding(22)
+                .padding(24)
             }
 
             Hairline()
             footer
         }
-        .frame(width: 560, height: 520)
-        .background(Palette.canvasGradient)
+        .frame(width: 580, height: 520)
         .interactiveDismissDisabled(isWorking)
         .task { tokenFocused = true }
     }
 
     private var header: some View {
-        HStack(spacing: 11) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(PluginPresentation.tint(for: kind).opacity(0.11))
-                Image(systemName: PluginPresentation.symbol(for: kind))
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(PluginPresentation.tint(for: kind))
-            }
-            .frame(width: 34, height: 34)
+        HStack(spacing: 12) {
+            Image(systemName: PluginPresentation.symbol(for: kind))
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Palette.secondaryInk)
+                .frame(width: 24, height: 24)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Connect \(kind.title)")
                     .font(Typo.sectionTitle)
                     .foregroundStyle(Palette.ink)
-                Text("Built-in code host · \(kind.pullRequestTermPlural.capitalized)")
+                Text("Built-in code host · \(kind.pullRequestTermPlural)")
                     .font(Typo.micro)
                     .foregroundStyle(Palette.tertiaryInk)
             }
 
             Spacer()
 
-            IconButton(systemName: "xmark", help: "Close", size: 10, frame: 24) {
+            IconButton(systemName: "xmark", help: "Close", size: 11, frame: 28) {
                 dismiss()
             }
             .disabled(isWorking)
         }
-        .padding(.horizontal, 22)
-        .padding(.top, 18)
-        .padding(.bottom, 14)
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
+        .padding(.bottom, 16)
     }
 
     private var footer: some View {
-        HStack(spacing: 9) {
+        HStack(spacing: 8) {
             Text("Gantry uses this account only for actions you start from a repository panel.")
                 .font(Typo.micro)
                 .foregroundStyle(Palette.faintInk)
@@ -482,26 +463,20 @@ private struct PluginConnectionEditor: View {
             Button {
                 connect()
             } label: {
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     if isWorking {
                         ProgressView().controlSize(.small)
                     }
                     Text(isWorking ? "Verifying…" : "Verify & Connect")
                         .font(Typo.captionMedium)
                 }
-                .foregroundStyle(Palette.onAccent)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Palette.accent)
-                )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glassProminent)
+            .tint(Palette.accent)
             .disabled(isWorking || token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
     }
 
     private var tokenPageURL: URL? {
@@ -516,7 +491,7 @@ private struct PluginConnectionEditor: View {
         hint: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(Typo.captionMedium)
                 .foregroundStyle(Palette.ink)
@@ -529,12 +504,7 @@ private struct PluginConnectionEditor: View {
     }
 
     private var fieldBackground: some View {
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .fill(Palette.surfaceSubtle)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(Palette.line, lineWidth: 0.7)
-            )
+        FieldBackground()
     }
 
     private func connect() {

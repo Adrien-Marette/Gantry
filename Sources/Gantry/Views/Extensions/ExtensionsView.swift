@@ -71,23 +71,14 @@ struct ExtensionsView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 13) {
-            IconButton(systemName: "chevron.left", help: "Back to workspace", frame: 27) {
+        HStack(spacing: 12) {
+            IconButton(systemName: "chevron.left", help: "Back to workspace", frame: 28) {
                 app.hideExtensions()
             }
 
-            ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Palette.accent.opacity(0.12))
-                Image(systemName: "puzzlepiece.extension")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(Palette.accent)
-            }
-            .frame(width: 38, height: 38)
-
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("Extensions & Mods")
-                    .font(.system(size: 22, weight: .semibold))
+                    .font(Typo.pageTitle)
                     .foregroundStyle(Palette.ink)
                 Text("Skills, commands, agents, hooks, MCP bundles, and UI mods for Claude Code.")
                     .font(Typo.caption)
@@ -98,8 +89,7 @@ struct ExtensionsView: View {
             Spacer(minLength: 12)
 
             if model.isRefreshing {
-                ProgressView()
-                    .controlSize(.small)
+                Spinner(size: 14)
             }
 
             ExtensionsPillButton(
@@ -122,8 +112,8 @@ struct ExtensionsView: View {
                 Task { await model.reload() }
             }
         }
-        .padding(.horizontal, 28)
-        .padding(.vertical, 18)
+        .padding(.horizontal, 32)
+        .padding(.vertical, 20)
     }
 
     private var sectionPicker: some View {
@@ -135,18 +125,18 @@ struct ExtensionsView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .frame(width: 410)
+            .frame(width: 400)
 
             Spacer()
 
             if let lastLoadedAt = model.lastLoadedAt {
                 Text("Updated \(Format.relativeTime(lastLoadedAt))")
                     .font(Typo.micro)
-                    .foregroundStyle(Palette.faintInk)
+                    .foregroundStyle(Palette.tertiaryInk)
             }
         }
-        .padding(.horizontal, 28)
-        .padding(.bottom, 14)
+        .padding(.horizontal, 32)
+        .padding(.bottom, 16)
     }
 
     @ViewBuilder
@@ -218,60 +208,49 @@ struct ExtensionsPillButton: View {
     var isBusy: Bool = false
     var action: () -> Void
 
-    @State private var isHovering = false
-
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 5.5) {
-                if isBusy {
-                    ProgressView()
-                        .controlSize(.small)
-                } else if let systemName {
-                    Image(systemName: systemName)
-                        .font(.system(size: 10, weight: .semibold))
-                }
-                Text(title)
-                    .font(Typo.captionMedium)
+        Group {
+            if prominent {
+                Button(action: action) { label }
+                    .buttonStyle(.glassProminent)
+                    .tint(tint)
+            } else {
+                Button(action: action) { label }
+                    .buttonStyle(.glass)
             }
-            .foregroundStyle(prominent ? Palette.onAccent : Palette.secondaryInk)
-            .padding(.horizontal, 11)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(
-                        prominent
-                            ? tint
-                            : Palette.surface.opacity(isHovering ? 0.82 : 0.52)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .strokeBorder(
-                                prominent ? Color.clear : Palette.lineStrong,
-                                lineWidth: 0.7
-                            )
-                    )
-            )
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .controlSize(.small)
         .disabled(isBusy)
-        .onHover { isHovering = $0 }
         .accessibilityLabel(title)
+    }
+
+    private var label: some View {
+        HStack(spacing: 6) {
+            if isBusy {
+                ProgressView()
+                    .controlSize(.small)
+            } else if let systemName {
+                Image(systemName: systemName)
+                    .font(.system(size: 11, weight: .medium))
+            }
+            Text(title)
+                .font(Typo.captionMedium)
+        }
+        .foregroundStyle(prominent ? Palette.onAccent : Palette.secondaryInk)
     }
 }
 
 struct ExtensionIconTile: View {
     var symbol: String
-    var tint: Color = Palette.accent
     var size: CGFloat = 32
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
-                .fill(tint.opacity(0.11))
+            RoundedRectangle(cornerRadius: size * 0.25, style: .continuous)
+                .fill(Palette.ink.opacity(0.04))
             Image(systemName: symbol)
                 .font(.system(size: size * 0.38, weight: .medium))
-                .foregroundStyle(tint)
+                .foregroundStyle(Palette.secondaryInk)
         }
         .frame(width: size, height: size)
     }
@@ -282,15 +261,15 @@ struct ExtensionBadge: View {
     var color: Color
 
     var body: some View {
-        Text(text)
-            .font(.system(size: 8.5, weight: .semibold))
-            .foregroundStyle(color)
-            .padding(.horizontal, 5.5)
-            .padding(.vertical, 1.5)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(color.opacity(0.10))
-            )
+        HStack(spacing: 4) {
+            Circle()
+                .fill(color)
+                .frame(width: 5, height: 5)
+            Text(text)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(color)
+                .lineLimit(1)
+        }
     }
 }
 
@@ -301,14 +280,14 @@ struct ExtensionsSearchField: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        HStack(spacing: 7) {
+        HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Palette.tertiaryInk)
 
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
-                .font(Typo.ui)
+                .font(.system(size: 12))
                 .foregroundStyle(Palette.ink)
                 .focused($focused)
 
@@ -317,26 +296,16 @@ struct ExtensionsSearchField: View {
                     text = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 10.5))
+                        .font(.system(size: 11))
                         .foregroundStyle(Palette.tertiaryInk)
                 }
                 .buttonStyle(.plain)
                 .help("Clear search")
             }
         }
-        .padding(.horizontal, 9)
+        .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Palette.ink.opacity(0.045))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(
-                            focused ? Palette.accent.opacity(0.35) : Palette.line,
-                            lineWidth: 0.7
-                        )
-                )
-        )
+        .background(FieldBackground(radius: 8, focused: focused))
         .animation(.easeOut(duration: 0.15), value: focused)
     }
 }
@@ -349,10 +318,10 @@ struct ExtensionsEmptyState: View {
     var action: (() -> Void)?
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.system(size: 24, weight: .light))
-                .foregroundStyle(Palette.faintInk)
+                .font(.system(size: 24, weight: .regular))
+                .foregroundStyle(Palette.tertiaryInk)
 
             Text(title)
                 .font(Typo.sectionTitle)
@@ -363,7 +332,7 @@ struct ExtensionsEmptyState: View {
                 .foregroundStyle(Palette.secondaryInk)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: 430)
+                .frame(maxWidth: 440)
 
             if let actionTitle, let action {
                 ExtensionsPillButton(title: actionTitle, prominent: true, action: action)
@@ -371,7 +340,7 @@ struct ExtensionsEmptyState: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(28)
+        .padding(32)
     }
 }
 

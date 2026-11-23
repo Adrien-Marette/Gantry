@@ -274,7 +274,7 @@ final class RepositoryPluginModel {
             selectedNumber = created.number
             checks = []
             mode = .pullRequests
-            actionMessage = "\(pullRequestTerm.capitalized) #\(created.number) created."
+            actionMessage = "\(pullRequestTerm) #\(created.number) created."
             await loadChecks()
         } catch {
             errorMessage = error.localizedDescription
@@ -325,24 +325,19 @@ struct RepositoryPluginSheet: View {
             }
         }
         .frame(width: 880, height: 620)
-        .background(Palette.canvasGradient)
         .task { await model.start() }
     }
 
     private var header: some View {
-        HStack(spacing: 11) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(headerTint.opacity(0.11))
-                Image(systemName: headerSymbol)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(headerTint)
-            }
-            .frame(width: 34, height: 34)
+        HStack(spacing: 12) {
+            Image(systemName: headerSymbol)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Palette.secondaryInk)
+                .frame(width: 24, height: 24)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(model.remote?.fullName ?? "Repository")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Palette.ink)
                     .lineLimit(1)
                 Text(headerSubtitle)
@@ -373,7 +368,7 @@ struct RepositoryPluginSheet: View {
                     systemName: "arrow.clockwise",
                     help: "Refresh repository",
                     size: 11,
-                    frame: 26
+                    frame: 28
                 ) {
                     Task { await model.load() }
                 }
@@ -385,19 +380,18 @@ struct RepositoryPluginSheet: View {
                     systemName: "arrow.up.right.square",
                     help: "Open on \(model.selectedPlugin?.kind.title ?? "code host")",
                     size: 11,
-                    frame: 26
+                    frame: 28
                 ) {
                     NSWorkspace.shared.open(url)
                 }
             }
 
-            IconButton(systemName: "xmark", help: "Close", size: 10, frame: 26) {
+            IconButton(systemName: "xmark", help: "Close", size: 11, frame: 28) {
                 dismiss()
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-        .background(Palette.canvasTop.opacity(0.30))
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
     }
 
     private var headerSymbol: String {
@@ -405,13 +399,6 @@ struct RepositoryPluginSheet: View {
             return PluginPresentation.symbol(for: plugin.kind)
         }
         return "arrow.triangle.branch"
-    }
-
-    private var headerTint: Color {
-        if let plugin = model.selectedPlugin {
-            return PluginPresentation.tint(for: plugin.kind)
-        }
-        return Palette.secondaryInk
     }
 
     private var headerSubtitle: String {
@@ -449,7 +436,7 @@ struct RepositoryPluginSheet: View {
     ) -> some View {
         VStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.system(size: 27, weight: .light))
+                .font(.system(size: 27, weight: .regular))
                 .foregroundStyle(Palette.tertiaryInk)
             Text(title)
                 .font(Typo.headline)
@@ -508,6 +495,7 @@ struct RepositoryPluginSheet: View {
                 if !model.pullRequests.isEmpty {
                     Text("\(model.pullRequests.count)")
                         .font(Typo.micro)
+                        .monospacedDigit()
                         .foregroundStyle(Palette.tertiaryInk)
                 }
                 Spacer()
@@ -515,10 +503,9 @@ struct RepositoryPluginSheet: View {
                     model.beginNewPullRequest()
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Palette.accent)
-                        .frame(width: 22, height: 22)
-                        .background(Circle().fill(Palette.accent.opacity(0.09)))
+                        .frame(width: 24, height: 24)
                 }
                 .buttonStyle(.plain)
                 .help("New \(model.pullRequestTerm)")
@@ -528,7 +515,7 @@ struct RepositoryPluginSheet: View {
             .frame(height: 48)
 
             if model.isLoading, model.pullRequests.isEmpty {
-                VStack(spacing: 9) {
+                VStack(spacing: 8) {
                     ProgressView().controlSize(.small)
                     Text("Loading \(model.pullRequestTermPlural)…")
                         .font(Typo.micro)
@@ -536,9 +523,9 @@ struct RepositoryPluginSheet: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.pullRequests.isEmpty {
-                VStack(spacing: 7) {
+                VStack(spacing: 8) {
                     Image(systemName: "arrow.triangle.branch")
-                        .font(.system(size: 20, weight: .light))
+                        .font(.system(size: 20, weight: .regular))
                         .foregroundStyle(Palette.tertiaryInk)
                     Text("No open \(model.pullRequestTermPlural)")
                         .font(Typo.captionMedium)
@@ -561,7 +548,7 @@ struct RepositoryPluginSheet: View {
                 .scrollIndicators(.never)
             }
         }
-        .background(Palette.surfaceSubtle.opacity(0.34))
+        .background(Palette.surface)
     }
 
     private func pullRequestRow(_ pullRequest: PluginPullRequest) -> some View {
@@ -569,37 +556,35 @@ struct RepositoryPluginSheet: View {
         return Button {
             model.select(pullRequest)
         } label: {
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
                     Text("#\(pullRequest.number)")
-                        .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(Palette.faintInk)
+                        .font(.system(size: 11, weight: .regular, design: .monospaced))
+                        .monospacedDigit()
+                        .foregroundStyle(Palette.tertiaryInk)
                     Text(pullRequest.title)
-                        .font(Typo.captionMedium)
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Palette.ink)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     Spacer(minLength: 0)
                 }
 
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     Image(systemName: "arrow.triangle.branch")
-                        .font(.system(size: 8.5))
+                        .font(.system(size: 10))
                     Text("\(pullRequest.sourceBranch) → \(pullRequest.targetBranch)")
-                        .font(.system(size: 9.5, design: .monospaced))
+                        .font(.system(size: 11, design: .monospaced))
                         .lineLimit(1)
                     if pullRequest.isDraft {
                         Text("Draft")
-                            .font(.system(size: 8.5, weight: .semibold))
+                            .font(.system(size: 10, weight: .medium))
                             .foregroundStyle(Palette.tertiaryInk)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 1)
-                            .background(Capsule().fill(Palette.ink.opacity(0.05)))
                     }
                 }
                 .foregroundStyle(Palette.tertiaryInk)
 
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     Text("@\(pullRequest.author)")
                     if let updatedAt = pullRequest.updatedAt {
                         Text("·")
@@ -607,18 +592,14 @@ struct RepositoryPluginSheet: View {
                     }
                 }
                 .font(Typo.micro)
-                .foregroundStyle(Palette.faintInk)
+                .foregroundStyle(Palette.tertiaryInk)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 9)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(selected ? Palette.accent.opacity(0.10) : Color.clear)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .strokeBorder(selected ? Palette.accent.opacity(0.18) : Color.clear, lineWidth: 0.8)
+                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                    .fill(selected ? Palette.ink.opacity(0.06) : Color.clear)
             )
             .contentShape(Rectangle())
         }
@@ -629,7 +610,7 @@ struct RepositoryPluginSheet: View {
     private var pullRequestDetail: some View {
         if let pullRequest = model.selectedPullRequest {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 16) {
                     pullRequestHeader(pullRequest)
                     checksSection
                     commentSection(pullRequest)
@@ -640,7 +621,7 @@ struct RepositoryPluginSheet: View {
         } else {
             VStack(spacing: 8) {
                 Image(systemName: "text.bubble")
-                    .font(.system(size: 22, weight: .light))
+                    .font(.system(size: 22, weight: .regular))
                     .foregroundStyle(Palette.tertiaryInk)
                 Text("Select a \(model.pullRequestTerm)")
                     .font(Typo.captionMedium)
@@ -656,26 +637,29 @@ struct RepositoryPluginSheet: View {
     }
 
     private func pullRequestHeader(_ pullRequest: PluginPullRequest) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .top, spacing: 9) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 8) {
                 Text(pullRequest.title)
-                    .font(.system(size: 19, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Palette.ink)
                     .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 4)
+                Spacer(minLength: 8)
                 if pullRequest.isDraft {
-                    pill("Draft", color: Palette.tertiaryInk)
+                    QuietBadge(text: "Draft", color: Palette.tertiaryInk)
                 }
-                pill(pullRequest.state.rawValue.capitalized, color: stateColor(pullRequest.state))
+                QuietBadge(
+                    text: pullRequest.state.rawValue.capitalized,
+                    color: stateColor(pullRequest.state)
+                )
             }
 
             HStack(spacing: 6) {
                 Image(systemName: "person.crop.circle")
-                    .font(.system(size: 9))
+                    .font(.system(size: 10))
                 Text("@\(pullRequest.author)")
                 Text("·")
                 Text("\(pullRequest.sourceBranch) → \(pullRequest.targetBranch)")
-                    .font(.system(size: 10.5, design: .monospaced))
+                    .font(.system(size: 11, design: .monospaced))
                 if let updatedAt = pullRequest.updatedAt {
                     Text("·")
                     Text("updated \(Format.relativeTime(updatedAt))")
@@ -701,15 +685,15 @@ struct RepositoryPluginSheet: View {
                     .font(Typo.caption)
                     .foregroundStyle(Palette.secondaryInk)
                     .lineLimit(5)
-                    .padding(11)
+                    .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .surfaceCard(radius: 10)
+                    .surfaceCard(radius: Radius.card)
             }
         }
     }
 
     private var checksSection: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 SectionLabel(title: "Checks")
                 if let summary = PluginPresentation.checkSummary(model.checks) {
@@ -722,7 +706,7 @@ struct RepositoryPluginSheet: View {
                     Task { await model.loadChecks() }
                 } label: {
                     Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 9.5, weight: .semibold))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(Palette.tertiaryInk)
                 }
                 .buttonStyle(.plain)
@@ -752,9 +736,9 @@ struct RepositoryPluginSheet: View {
                 Text("No checks reported for this commit.")
                     .font(Typo.micro)
                     .foregroundStyle(Palette.tertiaryInk)
-                    .padding(11)
+                    .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .surfaceCard(radius: 10)
+                    .surfaceCard(radius: Radius.card)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(model.checks.enumerated()), id: \.element.id) { index, check in
@@ -764,13 +748,13 @@ struct RepositoryPluginSheet: View {
                         }
                     }
                 }
-                .surfaceCard(radius: 10)
+                .surfaceCard(radius: Radius.card)
             }
         }
     }
 
     private func checkRow(_ check: PluginCheck) -> some View {
-        HStack(spacing: 9) {
+        HStack(spacing: 8) {
             Image(systemName: PluginPresentation.checkSymbol(for: check.state))
                 .font(.system(size: 11))
                 .foregroundStyle(PluginPresentation.checkTint(for: check.state))
@@ -796,19 +780,19 @@ struct RepositoryPluginSheet: View {
                     NSWorkspace.shared.open(url)
                 } label: {
                     Image(systemName: "arrow.up.right.square")
-                        .font(.system(size: 9.5, weight: .medium))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(Palette.tertiaryInk)
                 }
                 .buttonStyle(.plain)
                 .help("Open check details")
             }
         }
-        .padding(.horizontal, 11)
+        .padding(.horizontal, 12)
         .padding(.vertical, 8)
     }
 
     private func commentSection(_ pullRequest: PluginPullRequest) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 8) {
             SectionLabel(title: "Add a comment")
             ZStack(alignment: .topLeading) {
                 TextEditor(text: Binding(
@@ -819,13 +803,13 @@ struct RepositoryPluginSheet: View {
                 .foregroundStyle(Palette.ink)
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 72, maxHeight: 120)
-                .padding(7)
+                .padding(8)
                 .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Palette.surfaceSubtle)
+                    RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                        .fill(Palette.field)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .strokeBorder(Palette.line, lineWidth: 0.7)
+                            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                                .strokeBorder(Palette.line, lineWidth: 1)
                         )
                 )
 
@@ -850,22 +834,16 @@ struct RepositoryPluginSheet: View {
                 Button {
                     Task { await model.postComment() }
                 } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 6) {
                         if model.isWorking {
                             ProgressView().controlSize(.small)
                         }
                         Text("Post Comment")
                             .font(Typo.captionMedium)
                     }
-                    .foregroundStyle(Palette.onAccent)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(Palette.accent)
-                    )
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glassProminent)
+                .tint(Palette.accent)
                 .disabled(model.isWorking || model.comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
@@ -904,7 +882,7 @@ struct RepositoryPluginSheet: View {
                     ))
                     .textFieldStyle(.plain)
                     .font(Typo.body)
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background(formFieldBackground)
                 }
@@ -917,7 +895,7 @@ struct RepositoryPluginSheet: View {
                         ))
                         .textFieldStyle(.plain)
                         .font(Typo.mono)
-                        .padding(.horizontal, 10)
+                        .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(formFieldBackground)
                     }
@@ -929,7 +907,7 @@ struct RepositoryPluginSheet: View {
                         ))
                         .textFieldStyle(.plain)
                         .font(Typo.mono)
-                        .padding(.horizontal, 10)
+                        .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(formFieldBackground)
                     }
@@ -944,7 +922,7 @@ struct RepositoryPluginSheet: View {
                     .foregroundStyle(Palette.ink)
                     .scrollContentBackground(.hidden)
                     .frame(minHeight: 110)
-                    .padding(7)
+                    .padding(8)
                     .background(formFieldBackground)
                 }
 
@@ -981,22 +959,16 @@ struct RepositoryPluginSheet: View {
                     Button {
                         Task { await model.createPullRequest() }
                     } label: {
-                        HStack(spacing: 5) {
+                        HStack(spacing: 6) {
                             if model.isWorking {
                                 ProgressView().controlSize(.small)
                             }
-                            Text("Create \(model.pullRequestTerm.capitalized)")
+                            Text("Create \(model.pullRequestTerm)")
                                 .font(Typo.captionMedium)
                         }
-                        .foregroundStyle(Palette.onAccent)
-                        .padding(.horizontal, 13)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(Palette.accent)
-                        )
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.glassProminent)
+                    .tint(Palette.accent)
                     .disabled(model.isWorking || model.newTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -1012,7 +984,7 @@ struct RepositoryPluginSheet: View {
         hint: String?,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(Typo.captionMedium)
                 .foregroundStyle(Palette.ink)
@@ -1027,21 +999,7 @@ struct RepositoryPluginSheet: View {
     }
 
     private var formFieldBackground: some View {
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .fill(Palette.surfaceSubtle)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(Palette.line, lineWidth: 0.7)
-            )
-    }
-
-    private func pill(_ title: String, color: Color) -> some View {
-        Text(title)
-            .font(.system(size: 8.5, weight: .semibold))
-            .foregroundStyle(color)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(Capsule(style: .continuous).fill(color.opacity(0.09)))
+        FieldBackground()
     }
 
     private func stateColor(_ state: PluginPullRequestState) -> Color {

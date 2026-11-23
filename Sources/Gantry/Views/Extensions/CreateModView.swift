@@ -40,7 +40,7 @@ struct CreateModView: View {
             }
             .frame(maxWidth: 980)
             .frame(maxWidth: .infinity)
-            .padding(.horizontal, 28)
+            .padding(.horizontal, 32)
             .padding(.bottom, 28)
         }
         .scrollIndicators(.never)
@@ -72,8 +72,7 @@ struct CreateModView: View {
                     HStack(alignment: .top, spacing: 10) {
                         ExtensionIconTile(
                             symbol: symbol(for: candidate),
-                            tint: tint(for: candidate),
-                            size: 30
+                            size: 32
                         )
 
                         VStack(alignment: .leading, spacing: 3) {
@@ -91,26 +90,26 @@ struct CreateModView: View {
 
                         if template == candidate {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 12))
+                                .font(.system(size: 13))
                                 .foregroundStyle(Palette.accent)
                         }
                     }
-                    .padding(11)
-                    .frame(maxWidth: .infinity, minHeight: 74, alignment: .topLeading)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, minHeight: 72, alignment: .topLeading)
                     .background(
-                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
                             .fill(
                                 template == candidate
-                                    ? Palette.accent.opacity(0.075)
-                                    : Palette.surface.opacity(0.52)
+                                    ? Palette.surfaceRaised
+                                    : Palette.surface
                             )
                             .overlay(
-                                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
                                     .strokeBorder(
                                         template == candidate
-                                            ? Palette.accent.opacity(0.35)
+                                            ? Palette.lineStrong
                                             : Palette.line,
-                                        lineWidth: 0.7
+                                        lineWidth: 1
                                     )
                             )
                     )
@@ -126,7 +125,7 @@ struct CreateModView: View {
         VStack(alignment: .leading, spacing: 8) {
             SectionLabel(title: "Details")
 
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 12) {
                 field("Name", hint: "Lowercase letters, numbers, and hyphens. This becomes the folder name.") {
                     TextField("turn-counter", text: $name)
                         .textFieldStyle(.plain)
@@ -196,7 +195,7 @@ struct CreateModView: View {
                     ) {
                         create()
                     }
-                    .disabled(isCreating || name.isEmpty || nameIssue != nil)
+                    .disabled(isCreating || isValidating || isTesting || name.isEmpty || nameIssue != nil)
 
                     if let errorMessage {
                         Text(errorMessage)
@@ -208,8 +207,8 @@ struct CreateModView: View {
                     Spacer()
                 }
             }
-            .padding(14)
-            .surfaceCard(radius: 12)
+            .padding(16)
+            .surfaceCard(radius: Radius.card)
         }
     }
 
@@ -228,7 +227,7 @@ struct CreateModView: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top, spacing: 10) {
-                    ExtensionIconTile(symbol: "checkmark.seal", tint: Palette.success, size: 30)
+                    ExtensionIconTile(symbol: "checkmark.seal", size: 32)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Mod scaffolded")
@@ -252,11 +251,11 @@ struct CreateModView: View {
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
                         .fill(Palette.codeSurface)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .strokeBorder(Palette.line, lineWidth: 0.7)
+                            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                                .strokeBorder(Palette.line, lineWidth: 1)
                         )
                 )
 
@@ -325,7 +324,7 @@ struct CreateModView: View {
                     )
                 }
             }
-            .padding(14)
+            .padding(16)
             .surfaceCard(radius: 12)
         }
     }
@@ -354,11 +353,11 @@ struct CreateModView: View {
             }
             .frame(maxHeight: 190)
             .background(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
                     .fill(Palette.codeSurface)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            .strokeBorder(Palette.line, lineWidth: 0.7)
+                        RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                            .strokeBorder(Palette.line, lineWidth: 1)
                     )
             )
         }
@@ -392,18 +391,13 @@ struct CreateModView: View {
     }
 
     private var fieldBackground: some View {
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .fill(Palette.surfaceSubtle)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(Palette.line, lineWidth: 0.7)
-            )
+        FieldBackground()
     }
 
     private func inlineError(_ message: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "exclamationmark.circle.fill")
-                .font(.system(size: 10.5))
+                .font(.system(size: 11))
                 .foregroundStyle(Palette.danger)
                 .padding(.top, 1)
             Text(message)
@@ -411,14 +405,14 @@ struct CreateModView: View {
                 .foregroundStyle(Palette.danger)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(9)
+        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
+            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
                 .fill(Palette.danger.opacity(0.06))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .strokeBorder(Palette.danger.opacity(0.20), lineWidth: 0.7)
+                    RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                        .strokeBorder(Palette.danger.opacity(0.2), lineWidth: 1)
                 )
         )
     }
@@ -447,7 +441,9 @@ struct CreateModView: View {
     }
 
     private func create() {
-        guard !isCreating else { return }
+        // Validation and test output belong to the current result; do not
+        // replace it while either operation is still running.
+        guard !isCreating, !isValidating, !isTesting else { return }
         errorMessage = nil
         validation = nil
         testResult = nil
@@ -534,16 +530,6 @@ struct CreateModView: View {
         case .pane: return "sidebar.right"
         case .toolGuard: return "shield.lefthalf.filled"
         case .blank: return "doc"
-        }
-    }
-
-    private func tint(for template: ModTemplate) -> Color {
-        switch template {
-        case .statusLine: return Palette.accent
-        case .slashCommand: return Palette.info
-        case .pane: return Palette.success
-        case .toolGuard: return Palette.warning
-        case .blank: return Palette.tertiaryInk
         }
     }
 }

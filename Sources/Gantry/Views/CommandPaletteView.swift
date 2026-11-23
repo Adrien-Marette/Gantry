@@ -8,19 +8,20 @@ struct CommandPaletteView: View {
 
     @State private var query = ""
     @State private var selectedIndex = 0
+    @State private var keyboardScrollRevision = 0
     @FocusState private var searchFocused: Bool
 
     var body: some View {
         ZStack(alignment: .top) {
-            Color.black.opacity(0.24)
+            Palette.scrim
                 .ignoresSafeArea()
                 .onTapGesture { close() }
 
             panel
-                .padding(.top, 82)
+                .padding(.top, 80)
                 .frame(maxWidth: 620)
                 .padding(.horizontal, 24)
-                .transition(.move(edge: .top).combined(with: .opacity))
+                .transition(.opacity)
         }
         .onAppear {
             searchFocused = true
@@ -40,18 +41,19 @@ struct CommandPaletteView: View {
         }
         .onChange(of: query) { _, _ in
             selectedIndex = 0
+            keyboardScrollRevision &+= 1
         }
     }
 
     private var panel: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 9) {
+            HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Palette.tertiaryInk)
-                TextField("Search sessions or commands…", text: $query)
+                TextField("Search sessions or commands", text: $query)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 15))
+                    .font(.system(size: 14))
                     .foregroundStyle(Palette.ink)
                     .focused($searchFocused)
                     .onSubmit { performSelected() }
@@ -67,8 +69,8 @@ struct CommandPaletteView: View {
                 }
                 KeyHint(text: "esc")
             }
-            .padding(.horizontal, 17)
-            .frame(height: 51)
+            .padding(.horizontal, 16)
+            .frame(height: 52)
 
             Hairline()
 
@@ -92,14 +94,14 @@ struct CommandPaletteView: View {
                             }
                         }
                     }
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 7)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 8)
                 }
                 .frame(height: listHeight)
                 .scrollIndicators(.never)
-                .onChange(of: selectedIndex) { _, newValue in
+                .onChange(of: keyboardScrollRevision) { _, _ in
                     guard !entries.isEmpty else { return }
-                    let clamped = min(max(newValue, 0), entries.count - 1)
+                    let clamped = min(max(selectedIndex, 0), entries.count - 1)
                     withAnimation(.easeOut(duration: 0.12)) {
                         proxy.scrollTo(entries[clamped].id, anchor: .center)
                     }
@@ -113,55 +115,34 @@ struct CommandPaletteView: View {
                     KeyHint(text: "↑↓")
                     Text("navigate")
                         .font(Typo.micro)
-                        .foregroundStyle(Palette.faintInk)
+                        .foregroundStyle(Palette.tertiaryInk)
                 }
                 HStack(spacing: 4) {
                     KeyHint(text: "↵")
                     Text("open")
                         .font(Typo.micro)
-                        .foregroundStyle(Palette.faintInk)
+                        .foregroundStyle(Palette.tertiaryInk)
                 }
                 Spacer()
                 GantryLockup(compact: true)
-                    .opacity(0.65)
+                    .opacity(0.55)
             }
-            .padding(.horizontal, 15)
-            .frame(height: 38)
+            .padding(.horizontal, 16)
+            .frame(height: 40)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 21, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Palette.canvasTop.opacity(0.82),
-                            Palette.canvasBottom.opacity(0.76)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-        )
-        .glassEffect(
-            .regular.tint(Palette.accent.opacity(0.025)),
-            in: RoundedRectangle(cornerRadius: 21, style: .continuous)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 21, style: .continuous)
-                .strokeBorder(Palette.lineStrong, lineWidth: 0.8)
-        )
-        .shadow(color: .black.opacity(0.28), radius: 44, y: 18)
+        .glassPanel(radius: 20)
     }
 
     private var listHeight: CGFloat {
         if entries.isEmpty { return 168 }
-        return min(CGFloat(entries.count) * 41 + 14, 392)
+        return min(CGFloat(entries.count) * 44 + 16, 392)
     }
 
     private var emptyState: some View {
-        VStack(spacing: 7) {
+        VStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 19, weight: .light))
-                .foregroundStyle(Palette.faintInk)
+                .font(.system(size: 18, weight: .regular))
+                .foregroundStyle(Palette.tertiaryInk)
             Text("No matches")
                 .font(Typo.captionMedium)
                 .foregroundStyle(Palette.secondaryInk)
@@ -351,6 +332,7 @@ struct CommandPaletteView: View {
         guard !entries.isEmpty else { return }
         let next = selectedIndex + delta
         selectedIndex = (next + entries.count) % entries.count
+        keyboardScrollRevision &+= 1
     }
 
     private func performSelected() {
@@ -384,18 +366,14 @@ private struct PaletteRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(entry.tint.opacity(isSelected ? 0.14 : 0.08))
-                    Image(systemName: entry.icon)
-                        .font(.system(size: 11.5, weight: .medium))
-                        .foregroundStyle(entry.tint)
-                }
-                .frame(width: 27, height: 27)
+                Image(systemName: entry.icon)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(isSelected ? Palette.ink : Palette.secondaryInk)
+                    .frame(width: 18, height: 18)
 
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(entry.title)
-                        .font(.system(size: 12.5, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Palette.ink)
                         .lineLimit(1)
                     Text(entry.subtitle)
@@ -408,25 +386,13 @@ private struct PaletteRow: View {
 
                 if let hint = entry.hint {
                     KeyHint(text: hint)
-                } else if isSelected {
-                    Image(systemName: "arrow.turn.down.left")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(Palette.tertiaryInk)
-                        .padding(.trailing, 3)
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .frame(height: 40)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(isSelected ? Palette.accent.opacity(0.10) : Color.clear)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .strokeBorder(
-                                isSelected ? Palette.accent.opacity(0.22) : Color.clear,
-                                lineWidth: 0.7
-                            )
-                    )
+                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                    .fill(isSelected ? Palette.ink.opacity(0.06) : Color.clear)
             )
             .contentShape(Rectangle())
         }

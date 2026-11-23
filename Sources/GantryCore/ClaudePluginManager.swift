@@ -162,21 +162,22 @@ public struct ClaudeMarketplace: Decodable, Hashable, Identifiable, Sendable {
     public var name: String
     public var source: String?
     public var repo: String?
+    public var url: String?
     public var path: String?
     public var installLocation: String?
 
     public var id: String { stableKey }
 
-    /// Stable identity for favorites: a repository/path survives a rename.
+    /// Stable identity for favorites: a repository, URL, or path survives a rename.
     public var stableKey: String {
         if let repo = repo?.trimmingCharacters(in: .whitespacesAndNewlines), !repo.isEmpty {
             return "repo:\(repo)"
         }
+        if let url, let location = ClaudePluginText.credentialFreeURL(url) {
+            return "url:\(location)"
+        }
         if let path = path?.trimmingCharacters(in: .whitespacesAndNewlines), !path.isEmpty {
             return "path:\(path)"
-        }
-        if let source = source?.trimmingCharacters(in: .whitespacesAndNewlines), !source.isEmpty {
-            return "source:\(source)"
         }
         return "name:\(name)"
     }
@@ -185,6 +186,8 @@ public struct ClaudeMarketplace: Decodable, Hashable, Identifiable, Sendable {
         let value: String
         if let repo, !repo.isEmpty {
             value = repo
+        } else if let url = url?.trimmingCharacters(in: .whitespacesAndNewlines), !url.isEmpty {
+            value = url
         } else if let path, !path.isEmpty {
             value = path
         } else if let source, !source.isEmpty {
@@ -286,7 +289,8 @@ public enum ClaudeMarketplaceSource {
         guard !value.isEmpty else { throw ClaudePluginInputError.missingSource }
         if let components = URLComponents(string: value),
            components.scheme != nil,
-           components.user != nil || components.password != nil {
+           components.user != nil || components.password != nil ||
+               components.queryItems?.contains(where: { ClaudePluginText.isSensitiveQueryName($0.name) }) == true {
             throw ClaudePluginInputError.embeddedCredentials
         }
         return value
@@ -298,6 +302,24 @@ public enum ClaudePluginText {
         "token", "access_token", "auth", "authorization", "key", "apikey",
         "api_key", "password", "secret", "signature"
     ]
+
+    fileprivate static func isSensitiveQueryName(_ name: String) -> Bool {
+        sensitiveQueryNames.contains(name.lowercased())
+    }
+
+    fileprivate static func credentialFreeURL(_ text: String) -> String? {
+        guard var components = URLComponents(string: text.trimmingCharacters(in: .whitespacesAndNewlines)),
+              components.scheme != nil else { return nil }
+        components.user = nil
+        components.password = nil
+        if let query = components.percentEncodedQueryItems {
+            let safe = query.filter { !isSensitiveQueryName($0.name.removingPercentEncoding ?? $0.name) }
+            if safe.count != query.count {
+                components.percentEncodedQueryItems = safe.isEmpty ? nil : safe
+            }
+        }
+        return components.string
+    }
 
     /// Removes URL userinfo and redacts likely secret query values for display
     /// in errors and trust sheets. URLs embedded in longer messages are handled
@@ -339,7 +361,7 @@ public enum ClaudePluginText {
         }
         if let queryItems = components.queryItems {
             components.queryItems = queryItems.map { item in
-                if sensitiveQueryNames.contains(item.name.lowercased()) {
+                if isSensitiveQueryName(item.name) {
                     changed = true
                     return URLQueryItem(name: item.name, value: "REDACTED")
                 }
@@ -428,6 +450,7 @@ public struct ProcessClaudePluginRunner: ClaudePluginCommandRunning {
             let data = handle.availableData
             guard !data.isEmpty else {
                 handle.readabilityHandler = nil
+                stdout.markEndOfFile()
                 return
             }
             stdout.append(data)
@@ -436,39 +459,46 @@ public struct ProcessClaudePluginRunner: ClaudePluginCommandRunning {
             let data = handle.availableData
             guard !data.isEmpty else {
                 handle.readabilityHandler = nil
+                stderr.markEndOfFile()
                 return
             }
             stderr.append(data)
         }
 
         do {
-            try process.run()
-        } catch {
-            stdoutPipe.fileHandleForReading.readabilityHandler = nil
-            stderrPipe.fileHandleForReading.readabilityHandler = nil
-            throw ClaudePluginError.cliUnavailable(error.localizedDescription)
-        }
-
-        let deadline = Date().addingTimeInterval(max(timeout, 1))
-        while process.isRunning {
-            if Task.isCancelled {
-                await stop(process)
-                throw CancellationError()
+            defer {
+                stdoutPipe.fileHandleForReading.readabilityHandler = nil
+                stderrPipe.fileHandleForReading.readabilityHandler = nil
             }
-            if Date() >= deadline {
-                await stop(process)
-                throw ClaudePluginError.timedOut(
-                    "Claude Code did not respond within \(Int(timeout)) seconds."
-                )
+            do {
+                try process.run()
+            } catch {
+                throw ClaudePluginError.cliUnavailable(error.localizedDescription)
             }
-            try? await Task.sleep(nanoseconds: 30_000_000)
-        }
 
-        // Give the pipe readers a moment to deliver their final chunk, then
-        // detach so a lingering grandchild cannot keep this call waiting.
-        try? await Task.sleep(nanoseconds: 150_000_000)
-        stdoutPipe.fileHandleForReading.readabilityHandler = nil
-        stderrPipe.fileHandleForReading.readabilityHandler = nil
+            let deadline = Date().addingTimeInterval(max(timeout, 1))
+            while process.isRunning {
+                if Task.isCancelled {
+                    await stop(process)
+                    throw CancellationError()
+                }
+                if Date() >= deadline {
+                    await stop(process)
+                    throw ClaudePluginError.timedOut(
+                        "Claude Code did not respond within \(Int(timeout)) seconds."
+                    )
+                }
+                try? await Task.sleep(nanoseconds: 30_000_000)
+            }
+
+            // A descendant may still hold a write end open after Claude exits.
+            let clock = ContinuousClock()
+            let drainDeadline = clock.now + .seconds(1)
+            while !(stdout.reachedEndOfFile && stderr.reachedEndOfFile), clock.now < drainDeadline {
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            try Task.checkCancellation()
+        }
 
         if stdout.isTruncated || stderr.isTruncated {
             throw ClaudePluginError.unexpectedOutput(
@@ -502,6 +532,7 @@ private final class BoundedOutput: @unchecked Sendable {
     private let limit: Int
     private var data = Data()
     private var truncated = false
+    private var endOfFile = false
 
     init(limit: Int) {
         self.limit = limit
@@ -524,6 +555,18 @@ private final class BoundedOutput: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return truncated
+    }
+
+    func markEndOfFile() {
+        lock.lock()
+        defer { lock.unlock() }
+        endOfFile = true
+    }
+
+    var reachedEndOfFile: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return endOfFile
     }
 
     var string: String {
@@ -894,6 +937,10 @@ extension FavoriteMarketplace {
     }
 
     public func matches(name: String, sourceKey: String?) -> Bool {
+        // Older favorites used the source kind when the location was unknown.
+        if source?.hasPrefix("source:") == true {
+            return self.name == name
+        }
         if let source, !source.isEmpty, let sourceKey, !sourceKey.isEmpty {
             return source == sourceKey
         }

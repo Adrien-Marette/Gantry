@@ -25,6 +25,8 @@ final class ExtensionsModel {
     @ObservationIgnored private let app: AppModel
     @ObservationIgnored private var manager: ClaudePluginManager?
     @ObservationIgnored private var managerPath: String?
+    @ObservationIgnored private var refreshTask: Task<Void, Never>?
+    @ObservationIgnored private var reloadPending = false
 
     init(app: AppModel) {
         self.app = app
@@ -38,13 +40,43 @@ final class ExtensionsModel {
     }
 
     func reload() async {
-        guard !isRefreshing else { return }
+        guard !Task.isCancelled else { return }
+        reloadPending = true
+        if let refreshTask {
+            await refreshTask.value
+            return
+        }
+
         isRefreshing = true
+        // The model owns the refresh so a replaced view task cannot discard
+        // a request queued for the next Claude Code path.
+        let task = Task {
+            defer {
+                isRefreshing = false
+                refreshTask = nil
+            }
+            while reloadPending {
+                reloadPending = false
+                await refresh()
+            }
+        }
+        refreshTask = task
+        await task.value
+    }
+
+    private func refresh() async {
+        let path = app.claudeAvailability.path
+        var isCurrent: Bool { !Task.isCancelled && !reloadPending && app.claudeAvailability.path == path }
+        let previousState = loadState
+        defer {
+            if loadState == .loading {
+                loadState = previousState
+            }
+        }
         if loadState != .loaded {
             loadState = .loading
         }
         browseError = nil
-        defer { isRefreshing = false }
 
         guard let manager = makeManager() else {
             loadState = .failed(cliMessage)
@@ -54,23 +86,31 @@ final class ExtensionsModel {
         var installedLoaded = false
         do {
             let catalog = try await manager.catalog()
+            guard isCurrent else { return }
             installedPlugins = catalog.installed
             availablePlugins = catalog.available
             installedLoaded = true
         } catch {
+            guard isCurrent, !(error is CancellationError) else { return }
             browseError = userMessage(error)
             do {
-                installedPlugins = try await manager.installedPlugins()
+                let installed = try await manager.installedPlugins()
+                guard isCurrent else { return }
+                installedPlugins = installed
                 installedLoaded = true
             } catch {
+                guard isCurrent, !(error is CancellationError) else { return }
                 // Keep any previous state; the marketplace load below decides
                 // whether the page is usable at all.
             }
         }
 
         do {
-            marketplaces = try await manager.marketplaces()
+            let loadedMarketplaces = try await manager.marketplaces()
+            guard isCurrent else { return }
+            marketplaces = loadedMarketplaces
         } catch {
+            guard isCurrent, !(error is CancellationError) else { return }
             if installedLoaded {
                 if browseError == nil {
                     browseError = userMessage(error)

@@ -153,11 +153,13 @@ struct ExtensionsView: View {
     private var content: some View {
         if section == .create {
             CreateModView(model: model)
-        } else if case .failed(let message) = model.loadState,
+        } else if section != .sources,
+           case .failed(let message) = model.loadState,
            model.installedPlugins.isEmpty,
            model.availablePlugins.isEmpty {
             unavailableState(message)
         } else if model.loadState == .loading,
+                  (section != .sources || model.marketplaces.isEmpty),
                   model.installedPlugins.isEmpty,
                   model.availablePlugins.isEmpty {
             loadingState

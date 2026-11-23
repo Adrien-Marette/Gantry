@@ -141,15 +141,26 @@ private func temporaryRoot() -> URL {
     [
       {"name": "repo-source", "source": "github", "repo": "owner/repo", "installLocation": "/tmp/repo"},
       {"name": "local-source", "source": "directory", "path": "/tmp/local"},
-      {"name": "bare", "source": "github"}
+      {"name": "bare", "source": "github"},
+      {"name": "other-bare", "source": "github"},
+      {"name": "url-source", "source": "url", "url": "https://user:fake-password@example.com/repo?ref=main&%54oKeN=fake-token"},
+      {"name": "renamed", "source": "url", "url": "https://example.com/repo?ref=main"}
     ]
     """
 
     let marketplaces = try ClaudePluginManager.decodeMarketplaces(json)
-    #expect(marketplaces.count == 3)
+    #expect(marketplaces.count == 6)
     #expect(marketplaces[0].stableKey == "repo:owner/repo")
     #expect(marketplaces[1].stableKey == "path:/tmp/local")
-    #expect(marketplaces[2].stableKey == "source:github")
+    #expect(marketplaces[2].stableKey == "name:bare")
+    #expect(marketplaces[3].stableKey == "name:other-bare")
+    #expect(marketplaces[4].stableKey == "url:https://example.com/repo?ref=main")
+    #expect(marketplaces[4].stableKey == marketplaces[5].stableKey)
+    #expect(marketplaces[4].displayLocation == "https://example.com/repo?ref=main&ToKeN=REDACTED")
+
+    let legacyFavorite = FavoriteMarketplace(name: "bare", source: "source:github")
+    #expect(legacyFavorite.matches(marketplaces[2]))
+    #expect(!legacyFavorite.matches(marketplaces[3]))
 }
 
 // MARK: - Commands
@@ -347,6 +358,24 @@ private func temporaryRoot() -> URL {
     #expect(result.stdout.contains("hello-from-plugin-runner"))
 }
 
+@Test func processRunnerDrainsBothPipesAfterExit() async throws {
+    let root = temporaryRoot()
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let runner = ProcessClaudePluginRunner(
+        executableURL: URL(fileURLWithPath: "/bin/sh"),
+        environment: ["PATH": "/usr/bin:/bin"],
+        workingDirectory: root
+    )
+    let result = try await runner.run(arguments: ["-c", """
+        (sleep 0.3; echo final-out; echo final-err >&2) &
+        exit 0
+        """], timeout: 10)
+    #expect(result.stdout == "final-out\n")
+    #expect(result.stderr == "final-err\n")
+}
+
 @Test func processRunnerTimesOut() async throws {
     let root = temporaryRoot()
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -431,14 +460,21 @@ private func temporaryRoot() -> URL {
     #expect(try ClaudeMarketplaceSource.sanitized(" owner/repo ") == "owner/repo")
     #expect(try ClaudeMarketplaceSource.sanitized("https://github.com/owner/repo") == "https://github.com/owner/repo")
     #expect(try ClaudeMarketplaceSource.sanitized("/tmp/local-market") == "/tmp/local-market")
+    let sourceWithRef = "https://example.com/repo?ref=release%2Fnext"
+    #expect(try ClaudeMarketplaceSource.sanitized(sourceWithRef) == sourceWithRef)
 
-    do {
-        _ = try ClaudeMarketplaceSource.sanitized("https://user:token@example.com/owner/repo")
-        Issue.record("Expected embeddedCredentials")
-    } catch let error as ClaudePluginInputError {
-        guard case .embeddedCredentials = error else {
-            Issue.record("Unexpected error: \(error)")
-            return
+    for source in [
+        "https://user:fake-token@example.com/owner/repo",
+        "https://example.com/repo?ref=main&%54oKeN=fake-token"
+    ] {
+        do {
+            _ = try ClaudeMarketplaceSource.sanitized(source)
+            Issue.record("Expected embeddedCredentials")
+        } catch let error as ClaudePluginInputError {
+            guard case .embeddedCredentials = error else {
+                Issue.record("Unexpected error: \(error)")
+                return
+            }
         }
     }
 }

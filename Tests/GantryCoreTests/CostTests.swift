@@ -97,6 +97,64 @@ private func utcDate(_ year: Int, _ month: Int, _ day: Int, _ hour: Int) -> Date
     #expect(ModelCostEstimator.incrementalCost(from: nil, to: current, at: date) == nil)
 }
 
+@Test func incrementalCostPricesNewModelsFromZero() throws {
+    let date = utcDate(2026, 11, 23, 0)
+    let previous = ["claude-sonnet-5-5": ModelTokenUsage(inputTokens: 1_000_000)]
+    let current = [
+        "claude-sonnet-5-5": ModelTokenUsage(inputTokens: 1_500_000),
+        "claude-opus-5-5": ModelTokenUsage(inputTokens: 1_000_000)
+    ]
+
+    let incremental = try #require(ModelCostEstimator.incrementalCost(from: previous, to: current, at: date))
+    // Sonnet's 0.5M new input tokens at $2, plus Opus priced from zero at $4.
+    #expect(abs(incremental - 5) < 0.0001)
+}
+
+@Test func incrementalCostMixesKnownAndUnknownModels() throws {
+    let date = utcDate(2026, 11, 23, 0)
+    let previous = [
+        "claude-sonnet-5-5": ModelTokenUsage(inputTokens: 1_000_000),
+        "gateway-main": ModelTokenUsage(inputTokens: 100, reportedCostUSD: 0.10)
+    ]
+    let current = [
+        "claude-sonnet-5-5": ModelTokenUsage(inputTokens: 1_500_000),
+        "gateway-main": ModelTokenUsage(inputTokens: 400, reportedCostUSD: 0.35)
+    ]
+
+    let incremental = try #require(ModelCostEstimator.incrementalCost(from: previous, to: current, at: date))
+    // $1 of new Sonnet tokens plus the unknown model's $0.25 reported delta.
+    #expect(abs(incremental - 1.25) < 0.0001)
+}
+
+@Test func incrementalCostRejectsPartiallyResetSnapshots() throws {
+    let date = utcDate(2026, 11, 23, 0)
+    let previous = [
+        "claude-sonnet-5-5": ModelTokenUsage(inputTokens: 2_000_000),
+        "gateway-main": ModelTokenUsage(inputTokens: 100)
+    ]
+    let current = [
+        "claude-sonnet-5-5": ModelTokenUsage(inputTokens: 3_000_000),
+        "gateway-main": ModelTokenUsage(inputTokens: 50)
+    ]
+
+    // One model grew while another reset, so this is not a cumulative pair.
+    #expect(ModelCostEstimator.incrementalCost(from: previous, to: current, at: date) == nil)
+}
+
+@Test func pricingTablePrefersSpecificPrefixes() throws {
+    let date = utcDate(2026, 11, 23, 0)
+    let million = ModelTokenUsage(inputTokens: 1_000_000)
+
+    let fable = try #require(ModelCostEstimator.cost(of: ["claude-fable-5-2": million], at: date))
+    #expect(abs(fable - 8) < 0.0001)
+
+    let opus = try #require(ModelCostEstimator.cost(of: ["claude-opus-5-0": million], at: date))
+    #expect(abs(opus - 5) < 0.0001)
+
+    let sonnet = try #require(ModelCostEstimator.cost(of: ["claude-sonnet-5-0": million], at: date))
+    #expect(abs(sonnet - 2) < 0.0001)
+}
+
 @Test func unknownModelsFallBackToReportedCost() throws {
     let date = utcDate(2026, 11, 23, 0)
     let previous = ["gateway-main": ModelTokenUsage(

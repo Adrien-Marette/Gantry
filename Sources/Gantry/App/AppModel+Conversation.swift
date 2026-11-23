@@ -704,9 +704,10 @@ extension AppModel {
                !reportedModel.isEmpty {
                 session.actualModelName = reportedModel
             }
-            if !result.modelUsage.isEmpty {
-                session.modelUsage = result.modelUsage
-            }
+            // A result without a cumulative snapshot must not keep a stale
+            // baseline: the next cumulative report would otherwise price the
+            // turns in between a second time.
+            session.modelUsage = result.modelUsage.isEmpty ? nil : result.modelUsage
             session.claudeReportedCostUSD = result.totalCostUSD
 
             // Add this turn's estimate to the running total. Keeping the larger

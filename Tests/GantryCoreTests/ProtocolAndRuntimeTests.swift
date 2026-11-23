@@ -68,6 +68,20 @@ import Testing
     #expect(result.structuredResult?["filePath"]?.stringValue == "/tmp/test.txt")
 }
 
+@Test func stripsANSIFromToolResults() throws {
+    // Regression: a `try!` on an invalid ICU pattern trapped the runtime queue
+    // as soon as any tool result contained an escape sequence.
+    let line = """
+    {"type":"user","message":{"role":"user","content":[{"tool_use_id":"tool_3","type":"tool_result","content":"\\u001b[31merror\\u001b[0m \\u001b]8;;https://example.com\\u0007link\\u001b]8;;\\u0007"}]},"parent_tool_use_id":null,"session_id":"s1"}
+    """
+    let events = ClaudeStreamParser.parse(line: line)
+    guard case .toolResults(let results) = events.first, let result = results.first else {
+        Issue.record("Expected tool results")
+        return
+    }
+    #expect(result.text == "error link")
+}
+
 @Test func parsesResultUsage() throws {
     let line = """
     {"type":"result","subtype":"success","is_error":false,"duration_ms":1200,"result":"Done","session_id":"s1","total_cost_usd":0.042,"usage":{"input_tokens":100,"output_tokens":50,"cache_read_input_tokens":20,"cache_creation_input_tokens":10},"modelUsage":{"claude-sonnet":{"inputTokens":100}},"terminal_reason":"completed","permission_denials":[]}

@@ -484,12 +484,15 @@ public enum ClaudeStreamParser {
 }
 
 public enum TextSanitizer {
-    private static let ansiPattern = try! NSRegularExpression(
-        pattern: #"\u{001B}(?:\[[0-?]*[ -/]*[@-~]|\][^\u{0007}]*(?:\u{0007}|\u{001B}\\)|[@-_])"#
+    // ICU regex syntax takes \uHHHH, not Swift's \u{...}; the latter made this
+    // initializer throw, and the former `try!` trapped the runtime queue on the
+    // first ANSI-containing tool result. Sanitizing is cosmetic: never crash.
+    private static let ansiPattern = try? NSRegularExpression(
+        pattern: #"\u001B(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001B\\)|[@-_])"#
     )
 
     public static func stripANSI(_ text: String) -> String {
-        guard text.contains("\u{001B}") else { return text }
+        guard text.contains("\u{001B}"), let ansiPattern else { return text }
         let range = NSRange(text.startIndex..<text.endIndex, in: text)
         return ansiPattern.stringByReplacingMatches(in: text, range: range, withTemplate: "")
     }

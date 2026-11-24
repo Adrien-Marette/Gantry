@@ -96,11 +96,16 @@ public enum ModScaffolderError: Error, LocalizedError, Sendable {
 }
 
 public enum ModScaffolder {
+    /// Claude Code's plugin manifest expects `author` as an object.
+    private struct ManifestAuthor: Encodable {
+        var name: String
+    }
+
     private struct Manifest: Encodable {
         var name: String
         var version: String
         var description: String
-        var author: String?
+        var author: ManifestAuthor?
         var types: String?
 
         private enum CodingKeys: String, CodingKey {
@@ -224,7 +229,7 @@ public enum ModScaffolder {
             name: name,
             version: "0.1.0",
             description: description.isEmpty ? "A Claude Code mod created with Gantry." : description,
-            author: author,
+            author: author.map { ManifestAuthor(name: $0) },
             types: template.usesStateContract ? "./types/index.d.ts" : nil
         )
         let encoder = JSONEncoder()
@@ -358,7 +363,7 @@ public enum ModScaffolder {
 
         declare module 'claude-code' {
           interface PluginState {
-            '\(name)': { count: Shaped<number> }
+            '\(name)': { count: number }
           }
         }
 

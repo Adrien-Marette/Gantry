@@ -38,7 +38,8 @@ private func manifest(at modURL: URL) throws -> [String: Any] {
         #expect(json["name"] as? String == "test-mod")
         #expect(json["version"] as? String == "0.1.0")
         #expect(json["description"] as? String == "A test mod")
-        #expect(json["author"] as? String == "Tester")
+        let author = try #require(json["author"] as? [String: Any])
+        #expect(author["name"] as? String == "Tester")
 
         if template.usesStateContract {
             #expect(FileManager.default.fileExists(atPath: modURL.appendingPathComponent("types/index.d.ts").path))
@@ -133,6 +134,7 @@ private func manifest(at modURL: URL) throws -> [String: Any] {
 
     let json = try manifest(at: result.directoryURL)
     #expect(json["description"] as? String == description)
+    #expect(json["author"] == nil)
 }
 
 @Test func testFileIsOnlyGeneratedForPane() throws {

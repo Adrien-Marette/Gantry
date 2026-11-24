@@ -21,20 +21,10 @@ struct WelcomeView: View {
                             Text("A native workspace for Claude Code")
                                 .font(Typo.caption)
                                 .foregroundStyle(Palette.tertiaryInk)
-                                .padding(.horizontal, 11)
-                                .padding(.vertical, 6)
-                                .background(
-                                    Capsule(style: .continuous)
-                                        .fill(Palette.surface.opacity(0.34))
-                                        .overlay(
-                                            Capsule(style: .continuous)
-                                                .strokeBorder(Palette.line, lineWidth: 0.7)
-                                        )
-                                )
                         }
-                        .padding(.leading, 86)
-                        .padding(.trailing, 28)
-                        .padding(.top, 20)
+                        .padding(.leading, 88)
+                        .padding(.trailing, 32)
+                        .padding(.top, 24)
                     }
 
                     Spacer(minLength: embedded ? 30 : 22)
@@ -53,23 +43,23 @@ struct WelcomeView: View {
         }
         .overlay {
             if isDropTargeted {
-                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .strokeBorder(
-                        Palette.accent.opacity(0.65),
-                        style: StrokeStyle(lineWidth: 1.5, dash: [7, 5])
+                        Palette.accent,
+                        style: StrokeStyle(lineWidth: 2, dash: [8, 6])
                     )
                     .padding(24)
                     .allowsHitTesting(false)
                     .transition(.opacity)
             }
         }
-        .animation(.smooth(duration: 0.2), value: isDropTargeted)
+        .animation(.easeOut(duration: 0.2), value: isDropTargeted)
         .dropDestination(for: URL.self) { urls, _ in
             guard let url = urls.first else { return false }
             var isDirectory: ObjCBool = false
             guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
                   isDirectory.boolValue else {
-                dropError = "Please drop a project folder."
+                dropError = "Drop a project folder."
                 return false
             }
             app.addProject(at: url)
@@ -88,24 +78,23 @@ struct WelcomeView: View {
     }
 
     private var hero: some View {
-        VStack(spacing: 28) {
-            VStack(spacing: 18) {
-                EmptyStateSpark()
+        VStack(spacing: 32) {
+            VStack(spacing: 20) {
+                BrandMark(size: 48)
 
-                VStack(spacing: 14) {
-                    Text("A calmer way to build\nwith Claude Code.")
-                        .font(.system(size: 44, weight: .semibold, design: .default))
-                        .tracking(-1.15)
+                VStack(spacing: 12) {
+                    Text("Claude Code in a native window")
+                        .font(Typo.display)
+                        .tracking(-0.5)
                         .foregroundStyle(Palette.ink)
                         .multilineTextAlignment(.center)
-                        .lineSpacing(1)
 
-                    Text("Your projects, conversations, and permissions in one quiet native place.\nClaude Code does the work. Gantry gives it room to breathe.")
-                        .font(.system(size: 15.5))
+                    Text("Choose a project folder to start a session. Permissions, tool activity, and history stay on this Mac.")
+                        .font(.system(size: 15))
                         .foregroundStyle(Palette.secondaryInk)
                         .multilineTextAlignment(.center)
                         .lineSpacing(4)
-                        .frame(maxWidth: 580)
+                        .frame(maxWidth: 520)
                 }
             }
 
@@ -113,27 +102,23 @@ struct WelcomeView: View {
 
             featureRow
         }
-        .padding(.horizontal, 36)
+        .padding(.horizontal, 40)
         .frame(maxWidth: 800)
     }
 
     private var dropCard: some View {
         VStack(spacing: 16) {
-            HStack(alignment: .top, spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(Palette.accent.opacity(0.12))
-                    Image(systemName: isDropTargeted ? "arrow.down.doc.fill" : "folder.fill.badge.plus")
-                        .font(.system(size: 20, weight: .regular))
-                        .foregroundStyle(Palette.accent)
-                }
-                .frame(width: 46, height: 46)
+            HStack(alignment: .top, spacing: 16) {
+                Image(systemName: isDropTargeted ? "arrow.down.doc" : "folder.badge.plus")
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundStyle(Palette.secondaryInk)
+                    .frame(width: 24, height: 24)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(isDropTargeted ? "Drop to open" : "Open a project")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(Palette.ink)
-                    Text("Choose a folder and Gantry will start a fresh Claude Code session inside it.")
+                    Text("Gantry starts a Claude Code session inside the folder you choose.")
                         .font(Typo.caption)
                         .foregroundStyle(Palette.secondaryInk)
                         .fixedSize(horizontal: false, vertical: true)
@@ -142,30 +127,19 @@ struct WelcomeView: View {
                 Spacer(minLength: 4)
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 Button {
                     app.chooseProjectFolder()
                 } label: {
-                    HStack(spacing: 7) {
+                    HStack(spacing: 8) {
                         Image(systemName: "folder")
-                            .font(.system(size: 11.5, weight: .medium))
+                            .font(.system(size: 12, weight: .medium))
                         Text("Choose a Folder")
                             .font(Typo.ui)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
                 }
-                .foregroundStyle(Palette.onAccent)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(Palette.accentGradient)
-                        .overlay(
-                            Capsule(style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.20), lineWidth: 0.7)
-                        )
-                        .shadow(color: Palette.accent.opacity(0.26), radius: 10, y: 4)
-                )
-                .buttonStyle(.plain)
+                .buttonStyle(.glassProminent)
+                .tint(Palette.accent)
                 .keyboardShortcut(.defaultAction)
 
                 Text("or drop a folder anywhere")
@@ -174,7 +148,7 @@ struct WelcomeView: View {
 
                 Spacer()
 
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     KeyHint(text: "⌘O")
                     Text("Open project")
                         .font(Typo.micro)
@@ -182,22 +156,9 @@ struct WelcomeView: View {
                 }
             }
         }
-        .padding(22)
-        .frame(width: 540)
-        .background(
-            RoundedRectangle(cornerRadius: 25, style: .continuous)
-                .fill(Palette.surfaceRaised.opacity(0.58))
-        )
-        .glassEffect(
-            .regular.tint(Palette.accent.opacity(isDropTargeted ? 0.14 : 0.055)),
-            in: RoundedRectangle(cornerRadius: 25, style: .continuous)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 25, style: .continuous)
-                .strokeBorder(Palette.lineStrong, lineWidth: 0.8)
-        }
-        .shadow(color: Palette.shadow.opacity(0.35), radius: 30, y: 14)
-        .scaleEffect(isDropTargeted ? 1.012 : 1)
+        .padding(24)
+        .frame(maxWidth: 560)
+        .glassPanel(radius: 20)
     }
 
     private var featureRow: some View {
@@ -227,15 +188,15 @@ struct WelcomeView: View {
     private var featureDivider: some View {
         Rectangle()
             .fill(Palette.line)
-            .frame(width: 0.7, height: 34)
-            .padding(.horizontal, 18)
+            .frame(width: 1, height: 32)
+            .padding(.horizontal, 20)
     }
 
     private func feature(icon: String, title: String, detail: String) -> some View {
-        HStack(alignment: .top, spacing: 9) {
+        HStack(alignment: .top, spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 12.5, weight: .medium))
-                .foregroundStyle(Palette.accent)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Palette.tertiaryInk)
                 .frame(width: 16, height: 16)
                 .padding(.top, 1)
             VStack(alignment: .leading, spacing: 2) {
@@ -263,14 +224,14 @@ struct WelcomeView: View {
 
             Text("·")
                 .font(Typo.micro)
-                .foregroundStyle(Palette.faintInk)
+                .foregroundStyle(Palette.tertiaryInk)
 
             Button {
                 app.showExtensions()
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "puzzlepiece.extension")
-                        .font(.system(size: 9.5, weight: .medium))
+                        .font(.system(size: 10, weight: .medium))
                     Text("Extensions & Mods")
                         .font(Typo.micro)
                 }
@@ -281,7 +242,7 @@ struct WelcomeView: View {
 
             Text("·")
                 .font(Typo.micro)
-                .foregroundStyle(Palette.faintInk)
+                .foregroundStyle(Palette.tertiaryInk)
 
             Button {
                 openSettings()
@@ -289,26 +250,19 @@ struct WelcomeView: View {
                 Text("Settings")
                     .font(Typo.micro)
                     .foregroundStyle(Palette.secondaryInk)
-                    .underline(false)
             }
             .buttonStyle(.plain)
             .help("Open Gantry settings")
 
             Text("·")
                 .font(Typo.micro)
-                .foregroundStyle(Palette.faintInk)
+                .foregroundStyle(Palette.tertiaryInk)
 
             Text("Gantry \(AppModel.appVersion)")
                 .font(Typo.micro)
-                .foregroundStyle(Palette.faintInk)
+                .foregroundStyle(Palette.tertiaryInk)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 7)
-        .background(
-            Capsule(style: .continuous)
-                .fill(Palette.surface.opacity(0.30))
-                .overlay(Capsule(style: .continuous).strokeBorder(Palette.line, lineWidth: 0.6))
-        )
+        .padding(.vertical, 8)
     }
 
     private var statusColor: Color {

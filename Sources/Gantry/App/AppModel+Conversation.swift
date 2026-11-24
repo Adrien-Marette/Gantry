@@ -27,6 +27,10 @@ extension AppModel {
             return false
         }
 
+        if handleLocalSlashCommand(prompt, in: sessionID) {
+            return true
+        }
+
         var session = projects[location.projectIndex].sessions[location.sessionIndex]
         let hadPriorTurns = !session.turns.isEmpty
         if session.turns.isEmpty, !session.hasCustomTitle {
@@ -68,6 +72,10 @@ extension AppModel {
             guard let self else { return }
             do {
                 let runtime = try await self.startOrReuseRuntime(for: sessionID)
+                // The user may have stopped this turn while the process was
+                // starting; do not send a prompt whose turn is already over.
+                guard self.activeTurnIDs[sessionID] == assistantTurn.id,
+                      self.activities[sessionID]?.isStopping != true else { return }
                 try runtime.sendPrompt(prompt)
                 self.mutateSession(sessionID) { session in
                     session.claudeStarted = true
@@ -78,6 +86,10 @@ extension AppModel {
                     activity.statusText = "Thinking"
                 }
             } catch {
+                // A stop or a recycled start may have finished the turn while
+                // this task was awaiting the process.
+                guard self.activeTurnIDs[sessionID] == assistantTurn.id,
+                      self.activities[sessionID]?.isStopping != true else { return }
                 self.failActiveTurn(
                     sessionID: sessionID,
                     error: (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -89,6 +101,9 @@ extension AppModel {
 
     func stop(sessionID: UUID, silently: Bool = false) {
         guard let activity = activities[sessionID] else { return }
+        // A start may still be in flight before the runtime is published.
+        // Cancelling it keeps the send task from writing a prompt after stop.
+        runtimeStarts.removeValue(forKey: sessionID)?.cancel()
         if silently {
             if let runtime = runtimes[sessionID] {
                 for request in activity.pendingPermissions {
@@ -159,6 +174,64 @@ extension AppModel {
     // MARK: - Permissions
 
     func respond(to request: ClaudePermissionRequest, action: PermissionAction, sessionID: UUID) {
+        let reply: ClaudePermissionReply
+        let status: ToolStatus
+        switch action {
+        case .allowOnce:
+            reply = .allowOnce(request)
+            status = .running
+        case .allowAlways:
+            reply = .allowAlways(request)
+            status = .running
+            if let implied = request.impliedPermissionMode {
+                mutateSession(sessionID) { $0.permissionMode = implied }
+            }
+        case .deny:
+            reply = .deny(request, message: "The user declined this action.")
+            status = .denied
+        }
+        deliver(
+            reply,
+            for: request,
+            sessionID: sessionID,
+            toolStatus: status,
+            failureMessage: "Could not deliver your permission choice."
+        )
+    }
+
+    /// Answers an `AskUserQuestion` request. The allow response replaces the
+    /// tool input with one that includes Claude Code's `answers` map.
+    func answer(
+        _ request: ClaudePermissionRequest,
+        with answers: [String: String],
+        sessionID: UUID
+    ) {
+        deliver(
+            .answer(request, answers: answers),
+            for: request,
+            sessionID: sessionID,
+            toolStatus: .running,
+            failureMessage: "Could not send your answer."
+        )
+    }
+
+    func declineQuestion(_ request: ClaudePermissionRequest, sessionID: UUID) {
+        deliver(
+            .deny(request, message: "The user declined to answer."),
+            for: request,
+            sessionID: sessionID,
+            toolStatus: .denied,
+            failureMessage: "Could not decline the question."
+        )
+    }
+
+    private func deliver(
+        _ reply: ClaudePermissionReply,
+        for request: ClaudePermissionRequest,
+        sessionID: UUID,
+        toolStatus: ToolStatus,
+        failureMessage: String
+    ) {
         guard let activity = activities[sessionID] else { return }
         if let index = activity.pendingPermissions.firstIndex(where: { $0.requestID == request.requestID }) {
             activity.pendingPermissions.remove(at: index)
@@ -170,28 +243,14 @@ extension AppModel {
             return
         }
 
-        let reply: ClaudePermissionReply
-        switch action {
-        case .allowOnce:
-            reply = .allowOnce(request)
-            markTool(sessionID: sessionID, toolID: request.toolUseID, status: .running)
-        case .allowAlways:
-            reply = .allowAlways(request)
-            markTool(sessionID: sessionID, toolID: request.toolUseID, status: .running)
-            if let implied = request.impliedPermissionMode {
-                mutateSession(sessionID) { $0.permissionMode = implied }
-            }
-        case .deny:
-            reply = .deny(request, message: "The user declined this action.")
-            markTool(sessionID: sessionID, toolID: request.toolUseID, status: .denied)
-        }
+        markTool(sessionID: sessionID, toolID: request.toolUseID, status: toolStatus)
 
         do {
             try runtime.respondPermission(requestID: request.requestID, reply: reply)
             activity.statusText = activity.pendingPermissions.isEmpty ? "Working" : "Waiting for you"
             scheduleSave()
         } catch {
-            activity.banner = "Could not deliver your permission choice."
+            activity.banner = failureMessage
             failActiveTurn(
                 sessionID: sessionID,
                 error: (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -201,20 +260,50 @@ extension AppModel {
 
     // MARK: - Runtime lifecycle
 
-    private func startOrReuseRuntime(for sessionID: UUID) async throws -> ClaudeRuntime {
+    func startOrReuseRuntime(for sessionID: UUID) async throws -> ClaudeRuntime {
+        // A start already in flight owns the process. The in-flight check comes
+        // first because a runtime is published before its initialize handshake
+        // completes; handing that half-started process to a second caller would
+        // send a prompt before the command catalog arrives.
+        if let inFlight = runtimeStarts[sessionID] {
+            return try await inFlight.value
+        }
         if let existing = runtimes[sessionID] {
             return existing
         }
+
+        let task = Task { @MainActor [self] in
+            try await makeRuntime(for: sessionID)
+        }
+        runtimeStarts[sessionID] = task
+        defer {
+            if runtimeStarts[sessionID] == task {
+                runtimeStarts.removeValue(forKey: sessionID)
+            }
+        }
+        return try await task.value
+    }
+
+    private func makeRuntime(for sessionID: UUID) async throws -> ClaudeRuntime {
+        try Task.checkCancellation()
         guard let executablePath = claudeAvailability.path else {
             throw RuntimeHostError.claudeUnavailable(claudeAvailabilityMessage)
         }
         guard let location = locateSession(sessionID) else {
             throw RuntimeHostError.sessionMissing
         }
-        let project = projects[location.projectIndex]
-        let session = project.sessions[location.sessionIndex]
-        let provider = provider(for: session)
+        let provider = provider(for: projects[location.projectIndex].sessions[location.sessionIndex])
         let apiKey = try await apiKey(for: provider)
+        // The Keychain read can suspend long enough for a plugin change or a
+        // provider switch to recycle this start; never publish its process.
+        try Task.checkCancellation()
+
+        // Model and permission mode can change while the Keychain read is pending.
+        guard let currentLocation = locateSession(sessionID) else {
+            throw RuntimeHostError.sessionMissing
+        }
+        let project = projects[currentLocation.projectIndex]
+        let session = project.sessions[currentLocation.sessionIndex]
 
         var extraArguments: [String] = []
         do {
@@ -273,15 +362,25 @@ extension AppModel {
         }
 
         do {
-            try await runtime.initialize()
+            let initialization = try await runtime.initialize()
+            // A plugin change or provider switch may have recycled this start
+            // while the handshake was pending; never publish its catalog.
+            try Task.checkCancellation()
+            applyInitialization(initialization, sessionID: sessionID)
         } catch {
-            if runtimes[sessionID] === runtime {
+            // Only the start that still owns the session may clear its state.
+            // A recycled start can resume after a newer start has taken over.
+            let ownsRuntime = runtimes[sessionID] === runtime
+            if ownsRuntime {
                 runtimes.removeValue(forKey: sessionID)
                 runtimeTasks[sessionID]?.cancel()
                 runtimeTasks.removeValue(forKey: sessionID)
             }
             runtime.terminate()
-            stopPluginToolBridge(for: sessionID)
+            if ownsRuntime {
+                stopPluginToolBridge(for: sessionID)
+            }
+            if Task.isCancelled { throw CancellationError() }
             throw error
         }
         return runtime
@@ -342,7 +441,16 @@ extension AppModel {
                 mutateSession(sessionID) { $0.actualModelName = model }
             }
             if !info.slashCommands.isEmpty {
-                activity.availableCommands = info.slashCommands
+                // Older CLI versions list command names here instead of in the
+                // initialize payload; keep richer entries from the payload.
+                let merged = ClaudeSlashCommand.merging(
+                    names: info.slashCommands,
+                    into: activity.slashCommands
+                )
+                if merged != activity.slashCommands {
+                    activity.slashCommands = merged
+                }
+                activity.slashCommandsError = nil
             }
             if activity.statusText == "Starting Claude Code" {
                 activity.statusText = "Ready"
@@ -704,9 +812,10 @@ extension AppModel {
                !reportedModel.isEmpty {
                 session.actualModelName = reportedModel
             }
-            if !result.modelUsage.isEmpty {
-                session.modelUsage = result.modelUsage
-            }
+            // A result without a cumulative snapshot must not keep a stale
+            // baseline: the next cumulative report would otherwise price the
+            // turns in between a second time.
+            session.modelUsage = result.modelUsage.isEmpty ? nil : result.modelUsage
             session.claudeReportedCostUSD = result.totalCostUSD
 
             // Add this turn's estimate to the running total. Keeping the larger
@@ -750,7 +859,7 @@ extension AppModel {
 
     // MARK: - Helpers
 
-    private var claudeAvailabilityMessage: String {
+    var claudeAvailabilityMessage: String {
         switch claudeAvailability {
         case .checking:
             return "Claude Code is still starting."

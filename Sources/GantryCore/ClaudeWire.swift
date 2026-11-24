@@ -58,6 +58,22 @@ public struct ClaudePermissionReply: Sendable {
             toolUseID: request.toolUseID
         )
     }
+
+    /// Allows an `AskUserQuestion` call with the user's answers. Claude Code
+    /// reads them from `updatedInput.answers`, keyed by the exact question
+    /// text; multi-select labels are already joined into one string.
+    public static func answer(
+        _ request: ClaudePermissionRequest,
+        answers: [String: String]
+    ) -> ClaudePermissionReply {
+        var input = request.input.objectValue ?? [:]
+        input["answers"] = .object(answers.mapValues(JSONValue.string))
+        return ClaudePermissionReply(
+            behavior: .allow,
+            updatedInput: .object(input),
+            toolUseID: request.toolUseID
+        )
+    }
 }
 
 public enum ClaudeWire {

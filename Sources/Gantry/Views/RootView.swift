@@ -8,14 +8,12 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            AuroraBackground()
+            CanvasBackground()
 
             HStack(spacing: 0) {
                 SidebarView()
-                    .frame(width: 274)
+                    .frame(width: 264)
                     .transition(.move(edge: .leading).combined(with: .opacity))
-
-                Hairline(axis: .vertical)
 
                 workspace
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -41,8 +39,8 @@ struct RootView: View {
                 .zIndex(30)
             }
         }
-        .animation(.smooth(duration: 0.25), value: app.projects.isEmpty)
-        .animation(.smooth(duration: 0.22), value: app.commandPalettePresented)
+        .animation(.easeOut(duration: 0.2), value: app.projects.isEmpty)
+        .animation(.easeOut(duration: 0.2), value: app.commandPalettePresented)
         .sheet(isPresented: renameSheetBinding) {
             if let sessionID = app.renamingSessionID,
                let session = app.session(withID: sessionID) {
@@ -90,7 +88,7 @@ struct RootView: View {
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
-            .animation(.smooth(duration: 0.24), value: app.inspectorVisible)
+            .animation(.easeOut(duration: 0.2), value: app.inspectorVisible)
         } else if let project = app.selectedProject {
             ProjectLandingView(project: project)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -127,19 +125,14 @@ private struct LoadErrorBanner: View {
                 .lineLimit(2)
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(Palette.tertiaryInk)
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
-        .background(
-            Capsule(style: .continuous)
-                .fill(Palette.surfaceRaised.opacity(0.94))
-                .overlay(Capsule(style: .continuous).strokeBorder(Palette.line, lineWidth: 0.7))
-                .shadow(color: Palette.shadow.opacity(0.5), radius: 16, y: 6)
-        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .glassPanel(radius: 20)
         .frame(maxWidth: 620)
     }
 }
@@ -203,9 +196,9 @@ struct RenameSessionSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Rename Session")
+                Text("Rename session")
                     .font(Typo.sectionTitle)
                     .foregroundStyle(Palette.ink)
                 Text("Give this conversation a name that's easy to find.")
@@ -216,16 +209,9 @@ struct RenameSessionSheet: View {
             TextField("Session name", text: $title)
                 .textFieldStyle(.plain)
                 .font(Typo.body)
-                .padding(.horizontal, 11)
+                .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(Palette.surfaceSubtle)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .strokeBorder(Palette.lineStrong, lineWidth: 0.8)
-                        )
-                )
+                .background(FieldBackground(focused: focused))
                 .focused($focused)
                 .onSubmit { save() }
 
@@ -243,8 +229,7 @@ struct RenameSessionSheet: View {
             }
         }
         .padding(24)
-        .frame(width: 390)
-        .background(Palette.canvasGradient)
+        .frame(width: 400)
         .onAppear { focused = true }
     }
 

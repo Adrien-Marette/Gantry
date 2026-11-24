@@ -29,18 +29,13 @@ struct InspectorView: View {
                     usageSection
                     footerActions
                 }
-                .padding(.horizontal, 15)
+                .padding(.horizontal, 16)
                 .padding(.top, 16)
-                .padding(.bottom, 22)
+                .padding(.bottom, 24)
             }
             .scrollIndicators(.never)
         }
-        .background {
-            ZStack {
-                Palette.surfaceSubtle.opacity(0.58)
-                Rectangle().fill(.ultraThinMaterial).opacity(0.42)
-            }
-        }
+        .background(Palette.surface)
         .task(id: project.path) {
             branch = GitContext.read(from: project.url).branch
             remote = GitRepositoryReader.originRemote(at: project.url)
@@ -50,17 +45,16 @@ struct InspectorView: View {
     private var header: some View {
         HStack(spacing: 8) {
             Text("Inspector")
-                .font(.system(size: 12.5, weight: .semibold))
+                .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Palette.ink)
             Spacer()
-            IconButton(systemName: "xmark", help: "Hide inspector", size: 10, frame: 24) {
+            IconButton(systemName: "xmark", help: "Hide inspector", size: 11, frame: 28) {
                 app.inspectorVisible = false
             }
         }
-        .padding(.leading, 18)
+        .padding(.leading, 20)
         .padding(.trailing, 12)
-        .frame(height: 55)
-        .background(Palette.canvasTop.opacity(0.30))
+        .frame(height: 56)
         .overlay(alignment: .bottom) { Hairline() }
     }
 
@@ -106,7 +100,7 @@ struct InspectorView: View {
                 rowDivider
 
                 infoRow(
-                    icon: "sparkles",
+                    icon: "cpu",
                     title: "Model",
                     value: session.actualModelName ?? session.model.title,
                     detail: session.model == .automatic ? "Automatic" : session.model.title
@@ -122,7 +116,7 @@ struct InspectorView: View {
                 )
             }
             .padding(.vertical, 3)
-            .surfaceCard(radius: 13)
+            .surfaceCard(radius: Radius.card)
         }
     }
 
@@ -133,7 +127,7 @@ struct InspectorView: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 7) {
                     if activity?.isRunning == true {
-                        ActivityDots(color: Palette.accent, size: 2.6)
+                        LiveIndicator(color: Palette.accent, size: 12)
                         Text(activity?.statusText ?? "Working")
                             .font(Typo.captionMedium)
                             .foregroundStyle(Palette.secondaryInk)
@@ -172,8 +166,8 @@ struct InspectorView: View {
                     )
                 }
             }
-            .padding(12)
-            .surfaceCard(radius: 13)
+            .padding(16)
+            .surfaceCard(radius: Radius.card)
         }
     }
 
@@ -198,9 +192,9 @@ struct InspectorView: View {
                         .font(Typo.micro)
                         .foregroundStyle(Palette.tertiaryInk)
                 }
-                .padding(12)
+                .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .surfaceCard(radius: 13)
+                .surfaceCard(radius: Radius.card)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(session.changedFilePaths.enumerated()), id: \.offset) { index, path in
@@ -211,7 +205,7 @@ struct InspectorView: View {
                     }
                 }
                 .padding(.vertical, 3)
-                .surfaceCard(radius: 13)
+                .surfaceCard(radius: Radius.card)
             }
         }
     }
@@ -223,13 +217,11 @@ struct InspectorView: View {
             HStack(spacing: 8) {
                 metricCard(
                     label: "Estimated cost",
-                    value: Format.cost(session.totalCostUSD) ?? "—",
-                    icon: "creditcard"
+                    value: Format.cost(session.totalCostUSD) ?? "—"
                 )
                 metricCard(
                     label: "Tokens",
-                    value: session.totalTokens > 0 ? Format.tokens(session.totalTokens) : "—",
-                    icon: "text.word.spacing"
+                    value: session.totalTokens > 0 ? Format.tokens(session.totalTokens) : "—"
                 )
             }
 
@@ -265,16 +257,16 @@ struct InspectorView: View {
     }
 
     private func infoRow(icon: String, title: String, value: String, detail: String?) -> some View {
-        HStack(spacing: 9) {
+        HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Palette.tertiaryInk)
-                .frame(width: 14)
+                .frame(width: 16)
             Text(title)
                 .font(Typo.caption)
                 .foregroundStyle(Palette.tertiaryInk)
                 .frame(width: 72, alignment: .leading)
-            VStack(alignment: .trailing, spacing: 1) {
+            VStack(alignment: .trailing, spacing: 2) {
                 Text(value)
                     .font(Typo.captionMedium)
                     .foregroundStyle(Palette.secondaryInk)
@@ -283,20 +275,20 @@ struct InspectorView: View {
                 if let detail {
                     Text(detail)
                         .font(Typo.micro)
-                        .foregroundStyle(Palette.faintInk)
+                        .foregroundStyle(Palette.tertiaryInk)
                         .lineLimit(1)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding(.horizontal, 11)
+        .padding(.horizontal, 12)
         .padding(.vertical, 8)
     }
 
     private func miniMetric(value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(value)
-                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .font(Typo.figureSmall)
                 .foregroundStyle(Palette.ink)
             Text(label)
                 .font(Typo.micro)
@@ -306,22 +298,18 @@ struct InspectorView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func metricCard(label: String, value: String, icon: String) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 9))
-                Text(label)
-                    .font(Typo.micro)
-            }
-            .foregroundStyle(Palette.tertiaryInk)
+    private func metricCard(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(Typo.micro)
+                .foregroundStyle(Palette.tertiaryInk)
             Text(value)
-                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                .font(Typo.figure)
                 .foregroundStyle(Palette.ink)
         }
-        .padding(10)
+        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .surfaceCard(radius: 11)
+        .surfaceCard(radius: Radius.card)
     }
 
     private func fileRow(_ path: String) -> some View {
@@ -330,21 +318,21 @@ struct InspectorView: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "doc.text")
-                    .font(.system(size: 10, weight: .regular))
-                    .foregroundStyle(Palette.accent)
-                    .frame(width: 13)
+                    .font(.system(size: 11, weight: .regular))
+                    .foregroundStyle(Palette.tertiaryInk)
+                    .frame(width: 16)
                 Text(Format.abbreviatedPath(path, root: project.path))
                     .font(Typo.monoSmall)
                     .foregroundStyle(Palette.secondaryInk)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                Spacer(minLength: 3)
+                Spacer(minLength: 4)
                 Image(systemName: "arrow.up.forward.square")
-                    .font(.system(size: 9))
-                    .foregroundStyle(Palette.faintInk)
+                    .font(.system(size: 10))
+                    .foregroundStyle(Palette.tertiaryInk)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -355,16 +343,16 @@ struct InspectorView: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.system(size: 10.5, weight: .regular))
+                    .font(.system(size: 11, weight: .regular))
                     .foregroundStyle(Palette.tertiaryInk)
-                    .frame(width: 15)
+                    .frame(width: 16)
                 Text(title)
                     .font(Typo.caption)
                     .foregroundStyle(Palette.secondaryInk)
                 Spacer()
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 5)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -372,6 +360,6 @@ struct InspectorView: View {
 
     private var rowDivider: some View {
         Hairline()
-            .padding(.leading, 34)
+            .padding(.leading, 36)
     }
 }

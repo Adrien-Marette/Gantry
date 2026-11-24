@@ -293,7 +293,7 @@ final class ExtensionsModel {
         try await performAction(
             key: "marketplace:\(marketplace.name)",
             reloadAfter: true,
-            applyToRuntimes: false
+            applyToRuntimes: true
         ) { manager in
             try await manager.removeMarketplace(name: marketplace.name)
         }

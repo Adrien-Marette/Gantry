@@ -18,7 +18,7 @@ struct ExtensionsBrowseView: View {
     var body: some View {
         VStack(spacing: 0) {
             controls
-                .padding(.horizontal, 28)
+                .padding(.horizontal, 32)
                 .padding(.bottom, 12)
 
             if let browseError = model.browseError {
@@ -28,8 +28,8 @@ struct ExtensionsBrowseView: View {
                     message: browseError,
                     tint: Palette.warning
                 )
-                .padding(.horizontal, 28)
-                .padding(.bottom, 10)
+                .padding(.horizontal, 32)
+                .padding(.bottom, 12)
             }
 
             results
@@ -69,7 +69,7 @@ struct ExtensionsBrowseView: View {
     // MARK: - Controls
 
     private var controls: some View {
-        HStack(spacing: 9) {
+        HStack(spacing: 8) {
             ExtensionsSearchField(text: $search, placeholder: "Search extensions and mods")
                 .frame(width: 300)
 
@@ -89,24 +89,14 @@ struct ExtensionsBrowseView: View {
                     }
                 }
             } label: {
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     Image(systemName: "line.3.horizontal.decrease.circle")
-                        .font(.system(size: 10, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                     Text(filterTitle)
                         .font(Typo.micro)
                         .lineLimit(1)
                 }
                 .foregroundStyle(Palette.secondaryInk)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Palette.surface.opacity(0.52))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .strokeBorder(Palette.lineStrong, lineWidth: 0.7)
-                        )
-                )
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
@@ -115,35 +105,24 @@ struct ExtensionsBrowseView: View {
             Button {
                 favoritesOnly.toggle()
             } label: {
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     Image(systemName: favoritesOnly ? "star.fill" : "star")
-                        .font(.system(size: 10, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                     Text("Favorites")
                         .font(Typo.micro)
                 }
                 .foregroundStyle(favoritesOnly ? Palette.accent : Palette.secondaryInk)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(favoritesOnly ? Palette.accent.opacity(0.10) : Palette.surface.opacity(0.52))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .strokeBorder(
-                                    favoritesOnly ? Palette.accent.opacity(0.30) : Palette.lineStrong,
-                                    lineWidth: 0.7
-                                )
-                        )
-                )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glass)
+            .controlSize(.small)
             .help(favoritesOnly ? "Show all sources" : "Show favorites only")
 
             Spacer()
 
             Text("\(filteredPlugins.count) of \(model.availablePlugins.count)")
                 .font(Typo.micro)
-                .foregroundStyle(Palette.faintInk)
+                .monospacedDigit()
+                .foregroundStyle(Palette.tertiaryInk)
         }
     }
 
@@ -213,7 +192,7 @@ struct ExtensionsBrowseView: View {
                 }
                 .frame(maxWidth: 980)
                 .frame(maxWidth: .infinity)
-                .padding(.horizontal, 28)
+                .padding(.horizontal, 32)
                 .padding(.bottom, 24)
             }
             .scrollIndicators(.never)
@@ -227,12 +206,12 @@ struct ExtensionsBrowseView: View {
         return HStack(alignment: .top, spacing: 12) {
             ExtensionIconTile(
                 symbol: "puzzlepiece.extension",
-                tint: tint(for: plugin)
+                size: 32
             )
             .padding(.top, 1)
 
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 7) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
                     Text(plugin.name)
                         .font(Typo.headline)
                         .foregroundStyle(Palette.ink)
@@ -249,8 +228,8 @@ struct ExtensionsBrowseView: View {
                     }
                     if marketplace.map({ model.isFavorite($0) }) == true {
                         Image(systemName: "star.fill")
-                            .font(.system(size: 8.5))
-                            .foregroundStyle(Palette.accent)
+                            .font(.system(size: 10))
+                            .foregroundStyle(Palette.tertiaryInk)
                             .accessibilityLabel("Favorite source")
                     }
                 }
@@ -272,16 +251,17 @@ struct ExtensionsBrowseView: View {
                     if let version = installed?.version {
                         Text("· v\(version)")
                             .font(Typo.micro)
-                            .foregroundStyle(Palette.faintInk)
+                            .monospacedDigit()
+                            .foregroundStyle(Palette.tertiaryInk)
                     }
 
                     if let source = plugin.source?.displayLocation, !source.isEmpty {
                         Text("·")
                             .font(Typo.micro)
-                            .foregroundStyle(Palette.faintInk)
+                            .foregroundStyle(Palette.tertiaryInk)
                         Text(source)
                             .font(Typo.monoSmall)
-                            .foregroundStyle(Palette.faintInk)
+                            .foregroundStyle(Palette.tertiaryInk)
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }
@@ -293,9 +273,9 @@ struct ExtensionsBrowseView: View {
             trailingActions(plugin: plugin, installed: installed, marketplace: marketplace)
                 .padding(.top, 1)
         }
-        .padding(.horizontal, 13)
+        .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .surfaceCard(radius: 12)
+        .surfaceCard(radius: Radius.card)
     }
 
     @ViewBuilder
@@ -318,7 +298,7 @@ struct ExtensionsBrowseView: View {
                         pendingUninstall = installed
                     }
                 } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 6) {
                         if model.isBusy("toggle:\(installed.identity)")
                             || model.isBusy("update:\(installed.id)") {
                             ProgressView()
@@ -327,20 +307,10 @@ struct ExtensionsBrowseView: View {
                             Text("Manage")
                                 .font(Typo.micro)
                             Image(systemName: "ellipsis")
-                                .font(.system(size: 9, weight: .semibold))
+                                .font(.system(size: 10, weight: .medium))
                         }
                     }
                     .foregroundStyle(Palette.secondaryInk)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5.5)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(Palette.surface.opacity(0.6))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .strokeBorder(Palette.lineStrong, lineWidth: 0.7)
-                            )
-                    )
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
@@ -359,7 +329,7 @@ struct ExtensionsBrowseView: View {
                         )
                     } label: {
                         Image(systemName: "star")
-                            .font(.system(size: 10.5, weight: .medium))
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(Palette.tertiaryInk)
                             .frame(width: 22, height: 22)
                     }
@@ -429,11 +399,5 @@ struct ExtensionsBrowseView: View {
     private func isFavorite(marketplaceName: String) -> Bool {
         guard let marketplace = model.marketplace(named: marketplaceName) else { return false }
         return model.isFavorite(marketplace)
-    }
-
-    private func tint(for plugin: ClaudeAvailablePlugin) -> Color {
-        let colors = [Palette.accent, Palette.info, Palette.success, Palette.warning]
-        let sum = plugin.marketplaceName.unicodeScalars.reduce(0) { $0 + Int($1.value) }
-        return colors[sum % colors.count]
     }
 }

@@ -65,13 +65,14 @@ Gantry_RUN_KEYCHAIN_TESTS=1 swift test --filter pluginKeychainRoundTrip
 
 ## Project layout
 
-The package has three targets:
+The package has four targets:
 
 | Target | Purpose |
 | --- | --- |
 | `GantryCore` | Models, Claude Code runtime, provider and Keychain handling, code-host clients, MCP bridge, persistence. Keep logic here so it stays testable. |
 | `Gantry` | SwiftUI app: app state, design system, views, and orchestration. |
 | `GantryPluginMCP` | Bundled stdio MCP helper that forwards tool calls to the app. |
+| `GantryCoreTests` | Swift Testing suite for `GantryCore`, using a fake CLI and HTTP fixtures. |
 
 The README's **Project map** lists every file and its responsibility. Read it
 before adding a new file, and update it when the structure changes.
@@ -126,10 +127,12 @@ right to use and distribute it under the project license.
 
 ## Security
 
-Do not open a public issue for a security vulnerability. Use GitHub's private
-vulnerability reporting on the repository's **Security** tab. Never include
-real credentials, Keychain contents, or user data in a report; describe the
-issue and use placeholders instead.
+Read [SECURITY.md](SECURITY.md) for the trust model, secret handling, and
+reporting instructions. Do not open a public issue for a security
+vulnerability; use GitHub's private vulnerability reporting on the
+repository's **Security** tab, and never include real credentials, Keychain
+contents, or user data in a report. Describe the issue with placeholders
+instead.
 
 ## Questions
 

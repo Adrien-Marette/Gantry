@@ -17,23 +17,20 @@ struct SidebarView: View {
 
     var body: some View {
         ZStack {
-            Palette.sidebarGradient
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .opacity(0.30)
-            LinearGradient(
-                colors: [Color.white.opacity(0.07), Color.clear, Color.black.opacity(0.03)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            Color.clear
+                .glassEffect(.regular, in: Rectangle())
+                .ignoresSafeArea(edges: .top)
 
             VStack(spacing: 0) {
                 topContent
                 projectList
             }
+            .safeAreaInset(edge: .bottom, spacing: 0) { footer }
         }
-        .overlay(alignment: .trailing) { Hairline(axis: .vertical) }
-        .safeAreaInset(edge: .bottom, spacing: 0) { footer }
+        .overlay(alignment: .trailing) {
+            Hairline(axis: .vertical)
+                .ignoresSafeArea(edges: .top)
+        }
         .alert(
             "Delete session?",
             isPresented: Binding(
@@ -78,7 +75,7 @@ struct SidebarView: View {
                 IconButton(
                     systemName: "square.and.pencil",
                     help: "New session (⌘N)",
-                    frame: 26
+                    frame: 28
                 ) {
                     _ = app.newSession()
                 }
@@ -86,8 +83,8 @@ struct SidebarView: View {
                 .opacity(app.projects.isEmpty ? 0.45 : 1)
             }
             .padding(.leading, 80)
-            .padding(.trailing, 14)
-            .padding(.top, 14)
+            .padding(.trailing, 16)
+            .padding(.top, 16)
 
             searchField
                 .padding(.horizontal, 12)
@@ -103,25 +100,18 @@ struct SidebarView: View {
                 Spacer()
                 Text("\(app.projects.count)")
                     .font(Typo.micro)
-                    .foregroundStyle(Palette.faintInk)
+                    .monospacedDigit()
+                    .foregroundStyle(Palette.tertiaryInk)
                     .padding(.trailing, 4)
             }
-            .padding(.horizontal, 18)
+            .padding(.horizontal, 20)
             .padding(.top, 8)
         }
-        .padding(.bottom, 2)
-        .background(
-            LinearGradient(
-                colors: [Palette.sidebarTop.opacity(0.92), Palette.sidebarTop.opacity(0.0)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea(edges: .top)
-        )
+        .padding(.bottom, 4)
     }
 
     private var searchField: some View {
-        HStack(spacing: 7) {
+        HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Palette.tertiaryInk)
@@ -131,7 +121,7 @@ struct SidebarView: View {
                 set: { app.searchText = $0 }
             ))
             .textFieldStyle(.plain)
-            .font(Typo.ui)
+            .font(.system(size: 12))
             .foregroundStyle(Palette.ink)
             .focused($searchFocused)
 
@@ -140,22 +130,15 @@ struct SidebarView: View {
                     app.searchText = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 10.5))
+                        .font(.system(size: 11))
                         .foregroundStyle(Palette.tertiaryInk)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 9)
+        .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Palette.ink.opacity(0.045))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(searchFocused ? Palette.accent.opacity(0.35) : Palette.line, lineWidth: 0.7)
-                )
-        )
+        .background(FieldBackground(radius: 8, focused: searchFocused))
         .animation(.easeOut(duration: 0.15), value: searchFocused)
     }
 
@@ -165,30 +148,25 @@ struct SidebarView: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "plus")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Palette.accent)
-                    .frame(width: 17, height: 17)
-                    .background(Circle().fill(Palette.accent.opacity(0.12)))
+                    .frame(width: 16, height: 16)
 
                 Text("New session")
-                    .font(Typo.ui)
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Palette.ink)
 
                 Spacer()
 
                 Text("⌘N")
-                    .font(Typo.micro)
-                    .foregroundStyle(isHoveringNewSession ? Palette.secondaryInk : Palette.tertiaryInk)
+                    .font(Typo.keycap)
+                    .foregroundStyle(Palette.tertiaryInk)
             }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Palette.accent.opacity(isHoveringNewSession ? 0.11 : 0.07))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .strokeBorder(Palette.accent.opacity(isHoveringNewSession ? 0.28 : 0.15), lineWidth: 0.7)
-                    )
+                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                    .fill(isHoveringNewSession ? Palette.sidebarHover : Color.clear)
             )
             .contentShape(Rectangle())
         }
@@ -206,40 +184,30 @@ struct SidebarView: View {
             app.showExtensions()
         } label: {
             HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 1, style: .continuous)
+                    .fill(Palette.accent)
+                    .frame(width: 2, height: 16)
+                    .opacity(isSelected ? 1 : 0)
+
                 Image(systemName: "puzzlepiece.extension")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(isSelected ? Palette.accent : Palette.tertiaryInk)
-                    .frame(width: 17, height: 17)
-                    .background(
-                        Circle().fill(
-                            (isSelected ? Palette.accent : Palette.tertiaryInk).opacity(0.10)
-                        )
-                    )
+                    .foregroundStyle(isSelected ? Palette.ink : Palette.tertiaryInk)
+                    .frame(width: 16, height: 16)
 
                 Text("Extensions & Mods")
-                    .font(Typo.ui)
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(isSelected ? Palette.ink : Palette.secondaryInk)
 
                 Spacer()
-
-                if isSelected {
-                    Circle()
-                        .fill(Palette.accent)
-                        .frame(width: 5, height: 5)
-                }
             }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
                     .fill(
                         isSelected
                             ? Palette.sidebarSelection
                             : (isHoveringExtensions ? Palette.sidebarHover : Color.clear)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .strokeBorder(isSelected ? Palette.lineStrong : Color.clear, lineWidth: 0.7)
                     )
             )
             .contentShape(Rectangle())
@@ -295,22 +263,22 @@ struct SidebarView: View {
     private var noProjectsState: some View {
         VStack(spacing: 8) {
             Image(systemName: "folder.badge.plus")
-                .font(.system(size: 18, weight: .light))
-                .foregroundStyle(Palette.faintInk)
+                .font(.system(size: 18, weight: .regular))
+                .foregroundStyle(Palette.tertiaryInk)
             Text("No projects yet")
                 .font(Typo.captionMedium)
                 .foregroundStyle(Palette.secondaryInk)
             Button {
                 app.chooseProjectFolder()
             } label: {
-                Text("Open a Project")
-                    .font(Typo.micro)
+                Text("Open a project")
+                    .font(Typo.captionMedium)
                     .foregroundStyle(Palette.accent)
             }
             .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 44)
+        .padding(.top, 48)
     }
 
     private func projectSection(_ project: Project, sessions: [ChatSession]) -> some View {
@@ -321,7 +289,7 @@ struct SidebarView: View {
         return VStack(alignment: .leading, spacing: 1) {
             HStack(spacing: 6) {
                 Button {
-                    withAnimation(.smooth(duration: 0.18)) {
+                    withAnimation(.easeOut(duration: 0.18)) {
                         if collapsedProjects.contains(project.id) {
                             collapsedProjects.remove(project.id)
                         } else {
@@ -330,10 +298,10 @@ struct SidebarView: View {
                     }
                 } label: {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 8, weight: .semibold))
-                        .foregroundStyle(Palette.faintInk)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(Palette.tertiaryInk)
                         .rotationEffect(.degrees(isCollapsed ? 0 : 90))
-                        .frame(width: 12, height: 18)
+                        .frame(width: 12, height: 20)
                 }
                 .buttonStyle(.plain)
                 .help(isCollapsed ? "Expand project" : "Collapse project")
@@ -342,11 +310,11 @@ struct SidebarView: View {
                     app.selectProject(project.id)
                 } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: "folder.fill")
-                            .font(.system(size: 10.5, weight: .regular))
-                            .foregroundStyle(hasSelection ? Palette.accent : Palette.tertiaryInk)
+                        Image(systemName: "folder")
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundStyle(Palette.tertiaryInk)
                         Text(project.name)
-                            .font(Typo.captionMedium)
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(hasSelection ? Palette.ink : Palette.secondaryInk)
                             .lineLimit(1)
                     }
@@ -360,12 +328,12 @@ struct SidebarView: View {
                         _ = app.newSession(in: project.id)
                     } label: {
                         Image(systemName: "plus")
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(.system(size: 10, weight: .medium))
                             .foregroundStyle(Palette.tertiaryInk)
-                            .frame(width: 18, height: 18)
+                            .frame(width: 20, height: 20)
                             .background(
                                 RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                    .fill(Palette.ink.opacity(0.045))
+                                    .fill(Palette.ink.opacity(0.05))
                             )
                     }
                     .buttonStyle(.plain)
@@ -383,18 +351,18 @@ struct SidebarView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(Palette.tertiaryInk)
-                        .frame(width: 18, height: 18)
+                        .frame(width: 20, height: 20)
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
-                .frame(width: 18)
+                .frame(width: 20)
                 .opacity(hoveredProjectID == project.id ? 1 : 0)
             }
             .padding(.leading, 4)
             .padding(.trailing, 4)
-            .frame(height: 27)
+            .frame(height: 32)
             .background(
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(hoveredProjectID == project.id ? Palette.sidebarHover : Color.clear)
@@ -416,7 +384,7 @@ struct SidebarView: View {
             if !isCollapsed {
                 ForEach(sessions) { session in
                     sessionRow(session, project: project)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .transition(.opacity)
                 }
             }
         }
@@ -431,17 +399,22 @@ struct SidebarView: View {
         return Button {
             app.select(sessionID: session.id)
         } label: {
-            HStack(spacing: 7) {
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 1, style: .continuous)
+                    .fill(Palette.accent)
+                    .frame(width: 2, height: 16)
+                    .opacity(isSelected ? 1 : 0)
+
                 sessionStatus(activity: activity)
-                    .frame(width: 12, alignment: .center)
+                    .frame(width: 14, alignment: .center)
 
                 Text(session.title.isEmpty ? "New session" : session.title)
-                    .font(.system(size: 12.5, weight: isSelected ? .medium : .regular))
+                    .font(.system(size: 13, weight: isSelected ? .medium : .regular))
                     .foregroundStyle(isSelected ? Palette.ink : Palette.secondaryInk)
                     .lineLimit(1)
                     .truncationMode(.tail)
 
-                Spacer(minLength: 2)
+                Spacer(minLength: 4)
 
                 if isHovering {
                     Menu {
@@ -452,34 +425,28 @@ struct SidebarView: View {
                         }
                     } label: {
                         Image(systemName: "ellipsis")
-                            .font(.system(size: 9.5, weight: .semibold))
+                            .font(.system(size: 10, weight: .medium))
                             .foregroundStyle(Palette.tertiaryInk)
-                            .frame(width: 18, height: 18)
+                            .frame(width: 20, height: 20)
                     }
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
-                    .frame(width: 18)
+                    .frame(width: 20)
                 } else {
                     Text(Format.relativeTime(session.updatedAt))
-                        .font(.system(size: 9.5, weight: .medium, design: .rounded))
-                        .foregroundStyle(Palette.faintInk)
+                        .font(.system(size: 10, weight: .medium).monospacedDigit())
+                        .foregroundStyle(Palette.tertiaryInk)
                         .lineLimit(1)
-                        .padding(.trailing, 2)
                 }
             }
-            .padding(.leading, 18)
-            .padding(.trailing, 7)
-            .padding(.vertical, 5.5)
+            .padding(.horizontal, 8)
+            .frame(height: 32)
             .background(
-                RoundedRectangle(cornerRadius: 7.5, style: .continuous)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(
                         isSelected
                             ? Palette.sidebarSelection
                             : (isHovering ? Palette.sidebarHover : Color.clear)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 7.5, style: .continuous)
-                            .strokeBorder(isSelected ? Palette.lineStrong : Color.clear, lineWidth: 0.7)
                     )
             )
             .contentShape(Rectangle())
@@ -505,19 +472,18 @@ struct SidebarView: View {
         if let activity {
             if activity.hasPendingPermission {
                 Image(systemName: "hand.raised.fill")
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(Palette.accent)
             } else if activity.isRunning {
-                ActivityDots(color: Palette.accent, size: 2.4)
+                LiveIndicator(color: Palette.accent, size: 12)
             } else if activity.unread {
                 Circle()
                     .fill(Palette.accent)
                     .frame(width: 5, height: 5)
             } else {
                 Image(systemName: "bubble.left")
-                    .font(.system(size: 9, weight: .regular))
-                    .foregroundStyle(Palette.faintInk)
-                    .opacity(0.65)
+                    .font(.system(size: 10, weight: .regular))
+                    .foregroundStyle(Palette.tertiaryInk)
             }
         }
     }
@@ -525,8 +491,8 @@ struct SidebarView: View {
     private var searchEmptyState: some View {
         VStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 18, weight: .light))
-                .foregroundStyle(Palette.faintInk)
+                .font(.system(size: 18, weight: .regular))
+                .foregroundStyle(Palette.tertiaryInk)
             Text("No sessions found")
                 .font(Typo.captionMedium)
                 .foregroundStyle(Palette.secondaryInk)
@@ -535,23 +501,23 @@ struct SidebarView: View {
                 .foregroundStyle(Palette.tertiaryInk)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 44)
+        .padding(.top, 48)
     }
 
     private var footer: some View {
         VStack(spacing: 0) {
             Hairline()
-            HStack(spacing: 7) {
+            HStack(spacing: 8) {
                 SettingsLink {
                     HStack(spacing: 6) {
                         Image(systemName: "gearshape")
                             .font(.system(size: 11, weight: .medium))
                         Text("Settings")
-                            .font(Typo.micro)
+                            .font(.system(size: 11, weight: .medium))
                     }
                     .foregroundStyle(Palette.secondaryInk)
                     .padding(.horizontal, 6)
-                    .padding(.vertical, 5)
+                    .padding(.vertical, 4)
                 }
                 .buttonStyle(.plain)
 
@@ -560,21 +526,17 @@ struct SidebarView: View {
                 Button {
                     openSettings()
                 } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 6) {
                         Circle()
                             .fill(cliColor)
                             .frame(width: 5, height: 5)
                         Text(cliLabel)
-                            .font(Typo.micro)
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(Palette.tertiaryInk)
                             .lineLimit(1)
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 4)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(Palette.ink.opacity(0.035))
-                    )
                 }
                 .buttonStyle(.plain)
                 .help(cliTooltip)
@@ -582,7 +544,6 @@ struct SidebarView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
         }
-        .background(Palette.sidebarBottom.opacity(0.90))
     }
 
     private var cliColor: Color {

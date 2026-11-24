@@ -75,9 +75,10 @@ extension AppModel {
     // MARK: - Mods folder
 
     func resolveModsDirectory() -> URL {
-        if let stored = settings.modsDirectory?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .nilIfEmpty {
+        // Preserve the stored path exactly, including leading or trailing
+        // spaces in a folder name; only an empty setting uses the default.
+        if let stored = settings.modsDirectory,
+           !stored.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return URL(fileURLWithPath: stored, isDirectory: true)
         }
         let home = FileManager.default.homeDirectoryForCurrentUser
@@ -102,15 +103,10 @@ extension AppModel {
     /// Recycles idle Claude processes and marks running ones stale so the next
     /// turn starts with the current plugin set.
     func pluginEnvironmentDidChange() {
-        for project in projects {
-            for session in project.sessions {
-                if activities[session.id]?.isRunning == true {
-                    staleRuntimeSessions.insert(session.id)
-                } else {
-                    recycleRuntime(for: session.id)
-                }
-            }
-        }
+        invalidateRuntimes()
+        // A new process may expose a different command catalog (including
+        // commands registered by mods), so let the picker reload on next use.
+        clearSlashCommandCatalogs()
         scheduleSave()
     }
 
@@ -131,7 +127,11 @@ extension AppModel {
         guard standardized.path == projectPath else { return sessionID }
 
         projects[location.projectIndex].devModPath = standardized.path
-        recycleRuntime(for: sessionID)
+        // The project may already have other chats open; reload all of them so
+        // they pick up the dev mod, not just the session returned here.
+        let projectID = projects[location.projectIndex].id
+        invalidateRuntimes(projectID: projectID)
+        clearSlashCommandCatalogs(projectID: projectID)
         scheduleSave()
         return sessionID
     }

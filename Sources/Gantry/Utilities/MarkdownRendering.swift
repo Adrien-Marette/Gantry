@@ -57,9 +57,9 @@ enum InlineMarkdown {
         for run in result.runs {
             guard let intent = run.inlinePresentationIntent else { continue }
             if intent.contains(.code) {
-                result[run.range].font = .system(size: 12.4, weight: .regular, design: .monospaced)
-                result[run.range].foregroundColor = Palette.accent
-                result[run.range].backgroundColor = Palette.accent.opacity(0.10)
+                result[run.range].font = .system(size: 12, weight: .regular, design: .monospaced)
+                result[run.range].foregroundColor = Palette.ink
+                result[run.range].backgroundColor = Palette.ink.opacity(0.06)
             }
         }
         for run in result.runs {
@@ -200,7 +200,7 @@ enum CodeSyntax {
     }
 
     private static let keywordFont = Font.system(size: 12, weight: .medium, design: .monospaced)
-    private static let commentFont = Font.system(size: 12, weight: .regular, design: .monospaced).italic()
+    private static let commentFont = Font.system(size: 12, weight: .regular, design: .monospaced)
 
     private static func append(
         _ string: String,

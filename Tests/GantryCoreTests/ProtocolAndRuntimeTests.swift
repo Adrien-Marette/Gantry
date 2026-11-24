@@ -215,7 +215,13 @@ import Testing
         configuration: configuration,
         logURL: root.appendingPathComponent("claude.log")
     )
-    try await runtime.initialize(timeout: 5)
+    let initialization = try await runtime.initialize(timeout: 5)
+    let commands = ClaudeSlashCommand.decode(fromInitializePayload: initialization.payload)
+    #expect(commands.map(\.name) == ["fake-command", "fake-plugin:run"])
+    #expect(commands.first?.argumentHint == "[path]")
+    #expect(commands.first?.isBuiltin == true)
+    #expect(commands.last?.plugin == "fake-plugin")
+    #expect(commands.last?.aliases == ["fpr"])
     try runtime.sendPrompt("Make a file")
 
     struct Probe: Sendable {
@@ -313,7 +319,23 @@ for raw in sys.stdin:
                 "response": {
                     "subtype": "success",
                     "request_id": obj.get("request_id"),
-                    "response": {"commands": [], "agents": []}
+                    "response": {
+                        "commands": [
+                            {
+                                "name": "fake-command",
+                                "description": "A command from the fake CLI",
+                                "argumentHint": "[path]",
+                                "builtin": True
+                            },
+                            {
+                                "name": "fake-plugin:run",
+                                "description": "A plugin command",
+                                "plugin": "fake-plugin",
+                                "aliases": ["fpr"]
+                            }
+                        ],
+                        "agents": []
+                    }
                 }
             })
         elif request.get("subtype") == "interrupt":
@@ -503,4 +525,40 @@ sys.exit(0)
     #expect(result.isError == false)
     #expect(probe.assistantText.lowercased().contains("hello") || probe.streamedText.lowercased().contains("hello"))
     #expect(result.usage.inputTokens > 0)
+}
+
+@Test func realClaudeCodeReportsSlashCommands() async throws {
+    guard ProcessInfo.processInfo.environment["Gantry_RUN_CLI_INTEGRATION"] == "1" else {
+        return
+    }
+    guard let executable = ClaudeLocator.locate() else {
+        Issue.record("Claude Code executable was not found")
+        return
+    }
+    let root = GantryTestTempRoot.url
+        .appendingPathComponent("Gantry-real-commands-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let configuration = ClaudeLaunchConfiguration(
+        executableURL: executable,
+        workingDirectory: root,
+        claudeSessionID: UUID(),
+        resume: false,
+        model: .automatic,
+        permissionMode: .ask
+    )
+    let runtime = try ClaudeRuntime(
+        configuration: configuration,
+        logURL: root.appendingPathComponent("claude.log")
+    )
+    defer { runtime.terminate() }
+
+    // The handshake alone is enough; no prompt or model call is needed.
+    let initialization = try await runtime.initialize(timeout: 35)
+    let commands = ClaudeSlashCommand.decode(fromInitializePayload: initialization.payload)
+    #expect(!commands.isEmpty)
+    #expect(commands.contains { $0.name == "compact" })
+    #expect(commands.contains { $0.isBuiltin })
+    #expect(commands.allSatisfy { !$0.name.isEmpty })
 }

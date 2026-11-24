@@ -309,7 +309,8 @@ public enum ClaudePluginText {
 
     fileprivate static func credentialFreeURL(_ text: String) -> String? {
         guard var components = URLComponents(string: text.trimmingCharacters(in: .whitespacesAndNewlines)),
-              components.scheme != nil else { return nil }
+              components.scheme != nil,
+              components.host != nil else { return nil }
         components.user = nil
         components.password = nil
         if let query = components.percentEncodedQueryItems {
@@ -470,6 +471,9 @@ public struct ProcessClaudePluginRunner: ClaudePluginCommandRunning {
                 stdoutPipe.fileHandleForReading.readabilityHandler = nil
                 stderrPipe.fileHandleForReading.readabilityHandler = nil
             }
+            // Do not launch Claude Code when the caller was cancelled during
+            // the handoff.
+            try Task.checkCancellation()
             do {
                 try process.run()
             } catch {
@@ -876,10 +880,10 @@ public actor ClaudePluginManager {
                 continue
             }
             if let error = envelope.error, !error.isEmpty {
-                return ClaudePluginText.redactingCredentials(in: truncated(error, limit: 2_000))
+                return truncated(ClaudePluginText.redactingCredentials(in: error), limit: 2_000)
             }
             if let message = envelope.message, !message.isEmpty {
-                return ClaudePluginText.redactingCredentials(in: truncated(message, limit: 2_000))
+                return truncated(ClaudePluginText.redactingCredentials(in: message), limit: 2_000)
             }
         }
 
@@ -888,7 +892,7 @@ public actor ClaudePluginManager {
             : result.stderr
         let message = combined.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !message.isEmpty else { return "" }
-        return ClaudePluginText.redactingCredentials(in: truncated(message, limit: 2_000))
+        return truncated(ClaudePluginText.redactingCredentials(in: message), limit: 2_000)
     }
 
     private static func indicatesUnsupportedCLI(_ result: ClaudePluginCommandResult) -> Bool {

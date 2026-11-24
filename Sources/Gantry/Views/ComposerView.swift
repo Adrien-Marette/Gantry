@@ -7,12 +7,46 @@ struct ComposerView: View {
     var project: Project
     var activity: SessionActivity?
     var providerReady = true
+    var glassNamespace: Namespace.ID?
 
     @FocusState private var focused: Bool
-    @State private var isHoveringSend = false
+    @State private var commandSelection = 0
+    @State private var commandMenuDismissed = false
+    @State private var keyboardScrollRevision = 0
+    @Namespace private var ownGlassNamespace
 
     private var isRunning: Bool {
         activity?.isRunning == true
+    }
+
+    // MARK: - Slash commands
+
+    /// The typed slash token, for example `com` in `/com`. A space ends the
+    /// token so arguments can be typed freely.
+    private var slashQuery: String? {
+        let text = draft.wrappedValue
+        guard text.hasPrefix("/") else { return nil }
+        let token = text.dropFirst()
+        guard !token.contains(where: \.isWhitespace) else { return nil }
+        return String(token)
+    }
+
+    private var commandEntryActive: Bool {
+        slashQuery != nil && !commandMenuDismissed && !isRunning
+    }
+
+    private var commandCatalog: [ClaudeSlashCommand] {
+        activity?.slashCommands ?? []
+    }
+
+    private var filteredCommands: [ClaudeSlashCommand] {
+        guard let slashQuery else { return [] }
+        return commandCatalog.filter { $0.matches(slashQuery) }
+    }
+
+    private var clampedCommandSelection: Int {
+        guard !filteredCommands.isEmpty else { return 0 }
+        return min(max(commandSelection, 0), filteredCommands.count - 1)
     }
 
     private var draft: Binding<String> {
@@ -32,9 +66,38 @@ struct ComposerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
+            if commandEntryActive {
+                SlashCommandMenu(
+                    commands: filteredCommands,
+                    selectedIndex: clampedCommandSelection,
+                    isLoading: activity?.isLoadingSlashCommands == true,
+                    errorMessage: activity?.slashCommandsError,
+                    query: slashQuery ?? "",
+                    catalogCount: commandCatalog.count,
+                    scrollRevision: keyboardScrollRevision,
+                    onSelect: { command in accept(command) },
+                    onHighlight: { command in
+                        guard let index = filteredCommands.firstIndex(where: { $0.id == command.id }) else {
+                            return
+                        }
+                        commandSelection = index
+                    },
+                    onRetry: { app.loadSlashCommands(for: session.id, retry: true) }
+                )
+                .frame(maxWidth: 610, alignment: .leading)
+                .transition(.opacity)
+            }
+
+            composerSurface
+        }
+        .animation(.easeOut(duration: 0.14), value: commandEntryActive)
+    }
+
+    private var composerSurface: some View {
+        VStack(alignment: .leading, spacing: 8) {
             TextField(placeholder, text: draft, axis: .vertical)
                 .textFieldStyle(.plain)
-                .font(.system(size: 15, weight: .regular))
+                .font(.system(size: 14, weight: .regular))
                 .foregroundStyle(Palette.ink)
                 .lineSpacing(3)
                 .lineLimit(1...9)
@@ -47,77 +110,99 @@ struct ComposerView: View {
                     submit()
                     return .handled
                 }
-                .onSubmit { submit() }
+                .onKeyPress(.upArrow) {
+                    guard commandEntryActive else { return .ignored }
+                    moveCommandSelection(-1)
+                    return .handled
+                }
+                .onKeyPress(.downArrow) {
+                    guard commandEntryActive else { return .ignored }
+                    moveCommandSelection(1)
+                    return .handled
+                }
+                .onKeyPress(.escape) {
+                    guard commandEntryActive else { return .ignored }
+                    commandMenuDismissed = true
+                    return .handled
+                }
+                .onChange(of: slashQuery) { _, newValue in
+                    commandSelection = 0
+                    commandMenuDismissed = false
+                    keyboardScrollRevision &+= 1
+                    if newValue != nil {
+                        app.loadSlashCommands(for: session.id)
+                    }
+                }
+                .onChange(of: app.claudeAvailability) { _, availability in
+                    if slashQuery != nil, commandCatalog.isEmpty, availability.isReady {
+                        app.loadSlashCommands(for: session.id, retry: true)
+                    }
+                }
+                .onChange(of: isRunning) { _, running in
+                    if !running, slashQuery != nil, commandCatalog.isEmpty {
+                        app.loadSlashCommands(for: session.id, retry: true)
+                    }
+                }
+                .onAppear {
+                    if slashQuery != nil {
+                        app.loadSlashCommands(for: session.id)
+                    }
+                }
                 .padding(.horizontal, 4)
                 .padding(.top, 2)
                 .fixedSize(horizontal: false, vertical: true)
 
-            HStack(spacing: 7) {
+            HStack(spacing: 8) {
                 permissionMenu
                 modelMenu
 
                 Spacer(minLength: 8)
 
                 if isRunning {
-                    HStack(spacing: 7) {
-                        ActivityDots(color: Palette.accent, size: 2.8)
-                        Text(activity?.isStopping == true ? "Stopping…" : (activity?.statusText ?? "Working"))
+                    HStack(spacing: 8) {
+                        LiveIndicator(color: Palette.accent, size: 12)
+                        Text(activity?.isStopping == true ? "Stopping" : (activity?.statusText ?? "Working"))
                             .font(Typo.micro)
                             .foregroundStyle(Palette.secondaryInk)
                             .lineLimit(1)
                     }
-                    .padding(.trailing, 2)
+                    .padding(.trailing, 4)
                 } else {
-                    HStack(spacing: 4) {
-                        Text("↵")
-                            .font(.system(size: 9, weight: .medium, design: .rounded))
-                        Text("send")
-                            .font(.system(size: 9.5))
-                        Text("·")
-                            .font(.system(size: 9))
-                        Text("⇧↵")
-                            .font(.system(size: 9, weight: .medium, design: .rounded))
-                        Text("new line")
-                            .font(.system(size: 9.5))
+                    HStack(spacing: 6) {
+                        HStack(spacing: 4) {
+                            KeyHint(text: "/")
+                            Text("commands")
+                        }
+                        HStack(spacing: 4) {
+                            KeyHint(text: "↵")
+                            Text("send")
+                        }
+                        HStack(spacing: 4) {
+                            KeyHint(text: "⇧↵")
+                            Text("new line")
+                        }
                     }
-                    .foregroundStyle(Palette.faintInk)
-                    .padding(.trailing, 3)
+                    .font(Typo.micro)
+                    .foregroundStyle(Palette.tertiaryInk)
+                    .padding(.trailing, 4)
                 }
 
                 primaryButton
             }
-            .padding(.horizontal, 2)
-            .padding(.bottom, 1)
+            .padding(.horizontal, 4)
         }
-        .padding(.horizontal, 13)
-        .padding(.top, 10)
-        .padding(.bottom, 9)
-        .glassEffect(
-            .regular
-                .tint(Palette.accent.opacity(focused ? 0.075 : 0.035))
-                .interactive(),
-            in: RoundedRectangle(cornerRadius: 22, style: .continuous)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(
-                    focused ? Palette.accent.opacity(0.42) : Palette.lineStrong,
-                    lineWidth: focused ? 1.0 : 0.9
-                )
-        )
-        .overlay(alignment: .top) {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.30), Color.white.opacity(0.0)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ),
-                    lineWidth: 0.8
-                )
-                .allowsHitTesting(false)
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 12)
+        .glassPanel(radius: 20, interactive: true)
+        .glassEffectID("composer", in: glassNamespace ?? ownGlassNamespace)
+        .overlay {
+            if focused {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(Palette.accent, lineWidth: 2)
+                    .allowsHitTesting(false)
+            }
         }
-        .shadow(color: Palette.shadow.opacity(0.42), radius: 22, y: 9)
         .animation(.easeOut(duration: 0.16), value: focused)
         .onAppear {
             if session.turns.isEmpty {
@@ -134,12 +219,12 @@ struct ComposerView: View {
             return "Add an API key to use this provider"
         }
         if isRunning {
-            return "Claude is working…"
+            return "Claude is working"
         }
         if session.turns.isEmpty {
-            return "Ask Claude to build, fix, or explain…"
+            return "Ask Claude to build, fix, or explain"
         }
-        return "Message Claude…"
+        return "Message Claude"
     }
 
     private var permissionMenu: some View {
@@ -157,7 +242,7 @@ struct ComposerView: View {
             Text(session.permissionMode.detail)
             Text(permissionHelp)
         } label: {
-            ControlPillLabel(
+            ControlLabel(
                 systemName: session.permissionMode.symbol,
                 title: session.permissionMode.title,
                 tint: Palette.accent
@@ -187,8 +272,8 @@ struct ComposerView: View {
                 Text("Active: \(actual)")
             }
         } label: {
-            ControlPillLabel(
-                systemName: "sparkles",
+            ControlLabel(
+                systemName: "cpu",
                 title: session.displayModelName,
                 tint: Palette.secondaryInk
             )
@@ -211,44 +296,49 @@ struct ComposerView: View {
     }
 
     private var primaryButton: some View {
-        Button {
+        Group {
             if isRunning {
-                app.stop(sessionID: session.id)
+                Button {
+                    app.stop(sessionID: session.id)
+                } label: {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                        .frame(width: 16, height: 16)
+                        .padding(7)
+                }
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .help("Stop (⌘.)")
+                .accessibilityLabel("Stop Claude")
             } else {
-                submit()
+                Button {
+                    submit()
+                } label: {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 12, weight: .semibold))
+                        .frame(width: 16, height: 16)
+                        .padding(7)
+                }
+                .buttonStyle(.glassProminent)
+                .buttonBorderShape(.circle)
+                .tint(Palette.accent)
+                .disabled(!canSend)
+                .opacity(canSend ? 1 : 0.45)
+                .help("Send")
+                .accessibilityLabel("Send message")
             }
-        } label: {
-            ZStack {
-                Circle()
-                    .fill(isRunning ? Palette.ink.opacity(0.82) : Palette.accent)
-                    .overlay(
-                        Circle()
-                            .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.7)
-                    )
-                    .shadow(
-                        color: (isRunning ? Color.black : Palette.accent).opacity(0.22),
-                        radius: 7,
-                        y: 2
-                    )
-
-                Image(systemName: isRunning ? "stop.fill" : "arrow.up")
-                    .font(.system(size: isRunning ? 10 : 13, weight: .semibold))
-                    .foregroundStyle(Color.white)
-            }
-            .frame(width: 30, height: 30)
-            .scaleEffect(isHoveringSend ? 1.045 : 1)
-            .opacity(canSend || isRunning ? 1 : 0.34)
         }
-        .buttonStyle(.plain)
-        .disabled(!canSend && !isRunning)
-        .onHover { isHoveringSend = $0 }
-        .animation(.easeOut(duration: 0.14), value: isHoveringSend)
-        .help(isRunning ? "Stop (⌘.)" : "Send")
-        .accessibilityLabel(isRunning ? "Stop Claude" : "Send message")
     }
 
     private func submit() {
         guard !isRunning, providerReady else { return }
+
+        // While a slash token is being typed, Return chooses from the picker
+        // instead of sending the partial command to Claude.
+        if commandEntryActive, handleCommandMenuSubmit() {
+            return
+        }
+
         guard canSend else {
             if !trimmedDraft.isEmpty, !app.claudeAvailability.isReady {
                 activity?.banner = "Claude Code isn't available yet."
@@ -260,5 +350,53 @@ struct ComposerView: View {
             app.drafts[session.id] = ""
             focused = true
         }
+    }
+
+    /// Returns true when the picker consumed the submission.
+    private func handleCommandMenuSubmit() -> Bool {
+        guard let query = slashQuery else { return false }
+
+        let commands = filteredCommands
+        if !commands.isEmpty {
+            let highlighted = commands[clampedCommandSelection]
+            let lowered = query.lowercased()
+            if highlighted.name.lowercased() == lowered
+                || highlighted.aliases.contains(where: { $0.lowercased() == lowered }) {
+                execute(highlighted)
+            } else {
+                accept(highlighted)
+            }
+            return true
+        }
+
+        if activity?.isLoadingSlashCommands == true || commandCatalog.isEmpty {
+            // Keep the draft intact until the catalog or its error arrives.
+            return true
+        }
+
+        activity?.banner = "No command matches “/\(query)”."
+        return true
+    }
+
+    private func execute(_ command: ClaudeSlashCommand) {
+        guard app.send(command.invocation, in: session.id) else { return }
+        app.drafts[session.id] = ""
+        focused = true
+    }
+
+    /// Completes the selected command in place so arguments can be typed.
+    /// Pressing Return again then sends it.
+    private func accept(_ command: ClaudeSlashCommand) {
+        app.drafts[session.id] = command.invocation + " "
+        commandMenuDismissed = true
+        focused = true
+    }
+
+    private func moveCommandSelection(_ delta: Int) {
+        let commands = filteredCommands
+        guard !commands.isEmpty else { return }
+        let next = clampedCommandSelection + delta
+        commandSelection = (next + commands.count) % commands.count
+        keyboardScrollRevision &+= 1
     }
 }

@@ -55,23 +55,21 @@ struct ExtensionInstallSheet: View {
                         )
                     }
                 }
-                .padding(22)
+                .padding(24)
             }
 
             Hairline()
             footer
         }
         .frame(width: 580, height: 540)
-        .background(Palette.canvasGradient)
-        .interactiveDismissDisabled(isWorking)
+                .interactiveDismissDisabled(isWorking)
     }
 
     private var header: some View {
-        HStack(spacing: 11) {
+        HStack(spacing: 12) {
             ExtensionIconTile(
                 symbol: isApprovalStage ? "terminal" : "puzzlepiece.extension",
-                tint: isApprovalStage ? Palette.warning : Palette.accent,
-                size: 34
+                size: 32
             )
 
             VStack(alignment: .leading, spacing: 2) {
@@ -87,14 +85,14 @@ struct ExtensionInstallSheet: View {
 
             Spacer()
 
-            IconButton(systemName: "xmark", help: "Close", size: 10, frame: 24) {
+            IconButton(systemName: "xmark", help: "Close", size: 11, frame: 28) {
                 dismiss()
             }
             .disabled(isWorking)
         }
-        .padding(.horizontal, 22)
-        .padding(.top, 18)
-        .padding(.bottom, 14)
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
+        .padding(.bottom, 16)
     }
 
     private var reviewContent: some View {
@@ -173,8 +171,8 @@ struct ExtensionInstallSheet: View {
             }
             .disabled(isWorking || primaryDisabled || model.isMutating)
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
     }
 
     private var footerHint: String {
@@ -272,8 +270,8 @@ struct ExtensionInstallSheet: View {
                 .truncationMode(.middle)
                 .textSelection(.enabled)
         }
-        .padding(.horizontal, 13)
-        .padding(.vertical, 9)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
 }
 
@@ -336,20 +334,19 @@ struct ExtensionCommandApprovalSheet: View {
                         )
                     }
                 }
-                .padding(22)
+                .padding(24)
             }
 
             Hairline()
             footer
         }
         .frame(width: 580, height: 480)
-        .background(Palette.canvasGradient)
-        .interactiveDismissDisabled(isWorking)
+                .interactiveDismissDisabled(isWorking)
     }
 
     private var header: some View {
         HStack(spacing: 11) {
-            ExtensionIconTile(symbol: "terminal", tint: Palette.warning, size: 34)
+            ExtensionIconTile(symbol: "terminal", size: 32)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Approve Update Command")
@@ -363,14 +360,14 @@ struct ExtensionCommandApprovalSheet: View {
 
             Spacer()
 
-            IconButton(systemName: "xmark", help: "Close", size: 10, frame: 24) {
+            IconButton(systemName: "xmark", help: "Close", size: 11, frame: 28) {
                 dismiss()
             }
             .disabled(isWorking)
         }
-        .padding(.horizontal, 22)
-        .padding(.top, 18)
-        .padding(.bottom, 14)
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
+        .padding(.bottom, 16)
     }
 
     private var footer: some View {
@@ -397,8 +394,8 @@ struct ExtensionCommandApprovalSheet: View {
             }
             .disabled(isWorking || sha256 == nil || model.isMutating)
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
     }
 
     private func submit() {
@@ -466,18 +463,18 @@ struct ExtensionCommandBlock: View {
             }
             .scrollIndicators(.automatic)
             .background(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
                     .fill(Palette.codeSurface)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            .strokeBorder(Palette.line, lineWidth: 0.7)
+                        RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+                            .strokeBorder(Palette.line, lineWidth: 1)
                     )
             )
 
             if let sha256 {
                 Text("SHA-256 \(sha256)")
                     .font(Typo.monoSmall)
-                    .foregroundStyle(Palette.faintInk)
+                    .foregroundStyle(Palette.tertiaryInk)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .textSelection(.enabled)
@@ -490,7 +487,7 @@ struct ExtensionTrustWarning: View {
     var message: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: 9) {
+        HStack(alignment: .top, spacing: 8) {
             Image(systemName: "exclamationmark.shield")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Palette.warning)
@@ -501,14 +498,14 @@ struct ExtensionTrustWarning: View {
                 .foregroundStyle(Palette.secondaryInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(11)
+        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
                 .fill(Palette.warning.opacity(0.07))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(Palette.warning.opacity(0.22), lineWidth: 0.7)
+                    RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                        .strokeBorder(Palette.warning.opacity(0.25), lineWidth: 1)
                 )
         )
     }

@@ -5,7 +5,7 @@ enum ProviderPresentation {
     static func symbol(for preset: ProviderPreset) -> String {
         switch preset {
         case .claudeCode: return "terminal"
-        case .anthropic: return "sparkles"
+        case .anthropic: return "cloud"
         case .deepSeek: return "server.rack"
         case .custom: return "slider.horizontal.3"
         }

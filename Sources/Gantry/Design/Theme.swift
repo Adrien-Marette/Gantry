@@ -12,83 +12,52 @@ extension AppearanceMode {
     }
 }
 
+/// Warm graphite ramp with one terracotta accent, taken from the brand mark.
+/// Surfaces stay neutral so the transcript carries the color; the accent marks
+/// the selection, the live turn and the primary action, nothing else.
 enum Palette {
-    static let accent = dynamic(light: 0xC45F3F, dark: 0xE58B6B)
-    static let accentBright = dynamic(light: 0xD97757, dark: 0xF09B7D)
-    static let accentDeep = dynamic(light: 0x9C3E29, dark: 0xC2684A)
-    static let onAccent = Color.white
+    static let accent = dynamic(light: 0xA9472C, dark: 0xE58B6B)
+    static let onAccent = dynamic(light: 0xFFFFFF, dark: 0x1A120E)
 
-    static let ink = dynamic(light: 0x1D1916, dark: 0xF7F2EA)
-    static let secondaryInk = dynamic(light: 0x625A52, dark: 0xB8ACA0)
-    static let tertiaryInk = dynamic(light: 0x83796F, dark: 0x988D83)
-    static let faintInk = dynamic(light: 0xA79D93, dark: 0x6D645C)
+    static let ink = dynamic(light: 0x1F1B16, dark: 0xEFE9DE)
+    static let secondaryInk = dynamic(light: 0x5E554A, dark: 0xAAA398)
+    static let tertiaryInk = dynamic(light: 0x6F665A, dark: 0x8A847A)
+    static let faintInk = dynamic(light: 0x746B5F, dark: 0x847E74)
 
-    static let canvasTop = dynamic(light: 0xF6F1E8, dark: 0x17130F)
-    static let canvasBottom = dynamic(light: 0xEBE3D7, dark: 0x0E0C0A)
-    static let sidebarTop = dynamic(light: 0xF0E9DE, dark: 0x1A1511)
-    static let sidebarBottom = dynamic(light: 0xE7DED1, dark: 0x120F0C)
+    static let canvas = dynamic(light: 0xF7F4EE, dark: 0x161513)
+    static let surface = dynamic(light: 0xFDFBF7, dark: 0x1C1A18)
+    static let surfaceRaised = dynamic(light: 0xFFFFFF, dark: 0x262421)
+    static let field = dynamic(light: 0xF2EDE4, dark: 0x201D1A)
+    static let codeSurface = dynamic(light: 0xF4EFE8, dark: 0x0F0E0D)
+    static let codeHeader = dynamic(light: 0xEDE6DD, dark: 0x181614)
 
-    static let surface = dynamic(light: 0xFFFFFF, dark: 0x261F1A)
-    static let surfaceSubtle = dynamic(light: 0xFCFAF6, dark: 0x1A1612)
-    static let surfaceRaised = dynamic(light: 0xFFFFFF, dark: 0x2F2822)
-    static let codeSurface = dynamic(light: 0xF4EFE8, dark: 0x0E0F10)
-    static let codeHeader = dynamic(light: 0xEDE6DD, dark: 0x181A1B)
+    static let line = dynamic(light: 0x1F1B16, dark: 0xEFE9DE, lightAlpha: 0.09, darkAlpha: 0.10)
+    static let lineStrong = dynamic(light: 0x1F1B16, dark: 0xEFE9DE, lightAlpha: 0.15, darkAlpha: 0.16)
 
-    static let line = dynamic(light: 0x211D18, dark: 0xF8F2E9, lightAlpha: 0.105, darkAlpha: 0.115)
-    static let lineStrong = dynamic(light: 0x211D18, dark: 0xF8F2E9, lightAlpha: 0.17, darkAlpha: 0.18)
-    static let shadow = Color.black.opacity(0.18)
+    static let sidebarSelection = dynamic(light: 0x1F1B16, dark: 0xFFFFFF, lightAlpha: 0.06, darkAlpha: 0.07)
+    static let sidebarHover = dynamic(light: 0x1F1B16, dark: 0xFFFFFF, lightAlpha: 0.035, darkAlpha: 0.04)
 
-    static let sidebarSelection = dynamic(light: 0xFFFFFF, dark: 0xFFFFFF, lightAlpha: 0.66, darkAlpha: 0.105)
-    static let sidebarHover = dynamic(light: 0xFFFFFF, dark: 0xFFFFFF, lightAlpha: 0.30, darkAlpha: 0.055)
-    static let userBubble = dynamic(light: 0xFEFCF9, dark: 0x302720, lightAlpha: 0.84, darkAlpha: 0.92)
-    static let userBubbleBorder = accent.opacity(0.18)
+    /// Dims the workspace behind the command palette. Black in both
+    /// appearances, because it only needs to recede, not carry a color.
+    static let scrim = Color.black.opacity(0.24)
 
-    static let success = dynamic(light: 0x56785B, dark: 0x95B99A)
-    static let warning = dynamic(light: 0xA87524, dark: 0xE0B36A)
-    static let danger = dynamic(light: 0xB74840, dark: 0xE48277)
-    static let info = dynamic(light: 0x4C6D8E, dark: 0x94B8DC)
+    static let success = dynamic(light: 0x3D6B4B, dark: 0x95B99A)
+    static let warning = dynamic(light: 0x8A5A12, dark: 0xE0B36A)
+    static let danger = dynamic(light: 0xA83A32, dark: 0xE48277)
+    static let info = dynamic(light: 0x3D5F80, dark: 0x94B8DC)
 
-    static let auroraCoral = dynamic(light: 0xEEAE95, dark: 0x7C3D2C)
-    static let auroraIris = dynamic(light: 0xBAC8DF, dark: 0x293A55)
-    static let auroraSage = dynamic(light: 0xC2D4BF, dark: 0x2B4335)
-    static let auroraGold = dynamic(light: 0xE8D0A2, dark: 0x4E3A24)
-
-    static let codeKeyword = dynamic(light: 0xA5412D, dark: 0xE68E70)
-    static let codeString = dynamic(light: 0x54704A, dark: 0xA6C99A)
-    static let codeNumber = dynamic(light: 0x8A652E, dark: 0xD7B47A)
-    static let codeType = dynamic(light: 0x456A8C, dark: 0x9DC3E6)
-    static let codeComment = dynamic(light: 0x958B80, dark: 0x6E675F)
+    static let codeKeyword = dynamic(light: 0x9A3B27, dark: 0xE68E70)
+    static let codeString = dynamic(light: 0x4A6A44, dark: 0xA6C99A)
+    static let codeNumber = dynamic(light: 0x7E5A22, dark: 0xD7B47A)
+    static let codeType = dynamic(light: 0x3D6182, dark: 0x9DC3E6)
+    static let codeComment = dynamic(light: 0x7B7266, dark: 0x7A7368)
     static let codePlain = dynamic(light: 0x2B2723, dark: 0xE8E2D9)
-    static let codeFunction = dynamic(light: 0x735375, dark: 0xD7A9D8)
+    static let codeFunction = dynamic(light: 0x6B4D6D, dark: 0xD7A9D8)
 
-    static let diffAddition = dynamic(light: 0xDCEBDD, dark: 0x183021).opacity(0.85)
-    static let diffDeletion = dynamic(light: 0xF3DEDB, dark: 0x351D1C).opacity(0.85)
-    static let diffAdditionText = dynamic(light: 0x335937, dark: 0xB8D9B7)
-    static let diffDeletionText = dynamic(light: 0x8C3A34, dark: 0xE6A49B)
-
-    static var accentGradient: LinearGradient {
-        LinearGradient(
-            colors: [accentBright, accent, accentDeep],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    static var canvasGradient: LinearGradient {
-        LinearGradient(
-            colors: [canvasTop, canvasBottom],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    static var sidebarGradient: LinearGradient {
-        LinearGradient(
-            colors: [sidebarTop, sidebarBottom],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-    }
+    static let diffAddition = dynamic(light: 0xE3EEE2, dark: 0x17291C)
+    static let diffDeletion = dynamic(light: 0xF4E2DF, dark: 0x2E1A18)
+    static let diffAdditionText = dynamic(light: 0x2F5434, dark: 0xB8D9B7)
+    static let diffDeletionText = dynamic(light: 0x83352F, dark: 0xE6A49B)
 
     private static func dynamic(
         light: UInt32,
@@ -104,20 +73,30 @@ enum Palette {
     }
 }
 
+/// One family (SF), one scale, three weights. Hierarchy comes from size and
+/// color. Figures are tabular wherever they are numbers.
 enum Typo {
-    static let display = Font.system(size: 34, weight: .semibold, design: .default)
-    static let pageTitle = Font.system(size: 24, weight: .semibold, design: .default)
-    static let sectionTitle = Font.system(size: 18, weight: .semibold, design: .default)
-    static let headline = Font.system(size: 14, weight: .semibold, design: .default)
-    static let body = Font.system(size: 14.5, weight: .regular, design: .default)
-    static let bodyMedium = Font.system(size: 14.5, weight: .medium, design: .default)
-    static let ui = Font.system(size: 12.5, weight: .medium, design: .default)
-    static let caption = Font.system(size: 11.5, weight: .regular, design: .default)
-    static let captionMedium = Font.system(size: 11.5, weight: .medium, design: .default)
-    static let micro = Font.system(size: 10.5, weight: .medium, design: .default)
+    static let display = Font.system(size: 30, weight: .semibold)
+    static let pageTitle = Font.system(size: 22, weight: .semibold)
+    static let sectionTitle = Font.system(size: 17, weight: .semibold)
+    static let headline = Font.system(size: 13, weight: .semibold)
+    static let body = Font.system(size: 14, weight: .regular)
+    static let bodyMedium = Font.system(size: 14, weight: .medium)
+    static let ui = Font.system(size: 13, weight: .medium)
+    static let caption = Font.system(size: 12, weight: .regular)
+    static let captionMedium = Font.system(size: 12, weight: .medium)
+    static let micro = Font.system(size: 11, weight: .medium)
     static let mono = Font.system(size: 12, weight: .regular, design: .monospaced)
     static let monoSmall = Font.system(size: 11, weight: .regular, design: .monospaced)
-    static let serif = Font.system(size: 31, weight: .regular, design: .serif)
+    static let keycap = Font.system(size: 10, weight: .medium, design: .monospaced)
+    static let figure = Font.system(size: 17, weight: .regular).monospacedDigit()
+    static let figureSmall = Font.system(size: 14, weight: .regular).monospacedDigit()
+}
+
+enum Radius {
+    static let control: CGFloat = 8
+    static let card: CGFloat = 12
+    static let panel: CGFloat = 16
 }
 
 extension NSColor {
@@ -131,58 +110,13 @@ extension NSColor {
     }
 }
 
-struct AuroraBackground: View {
-    @Environment(\.colorScheme) private var colorScheme
-
+/// The window is one quiet neutral. Color and material live in the transcript
+/// and in the glass layer above it, never in a background wash.
+struct CanvasBackground: View {
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                Palette.canvasGradient
-
-                Circle()
-                    .fill(Palette.auroraCoral)
-                    .frame(width: geometry.size.width * 0.68, height: geometry.size.width * 0.68)
-                    .blur(radius: 140)
-                    .opacity(colorScheme == .dark ? 0.30 : 0.24)
-                    .offset(
-                        x: geometry.size.width * 0.30,
-                        y: -geometry.size.height * 0.34
-                    )
-
-                Circle()
-                    .fill(Palette.auroraIris)
-                    .frame(width: geometry.size.width * 0.55, height: geometry.size.width * 0.55)
-                    .blur(radius: 130)
-                    .opacity(colorScheme == .dark ? 0.22 : 0.18)
-                    .offset(
-                        x: -geometry.size.width * 0.36,
-                        y: geometry.size.height * 0.14
-                    )
-
-                Circle()
-                    .fill(Palette.auroraSage)
-                    .frame(width: geometry.size.width * 0.45, height: geometry.size.width * 0.45)
-                    .blur(radius: 150)
-                    .opacity(colorScheme == .dark ? 0.18 : 0.14)
-                    .offset(
-                        x: geometry.size.width * 0.26,
-                        y: geometry.size.height * 0.44
-                    )
-
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(colorScheme == .dark ? 0.015 : 0.16),
-                        Color.clear,
-                        Color.black.opacity(colorScheme == .dark ? 0.20 : 0.015)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            }
-            .drawingGroup()
-        }
-        .ignoresSafeArea()
-        .accessibilityHidden(true)
+        Palette.canvas
+            .ignoresSafeArea()
+            .accessibilityHidden(true)
     }
 }
 
@@ -194,35 +128,60 @@ struct Hairline: View {
         Rectangle()
             .fill(color)
             .frame(
-                width: axis == .vertical ? 0.7 : nil,
-                height: axis == .horizontal ? 0.7 : nil
+                width: axis == .vertical ? 1 : nil,
+                height: axis == .horizontal ? 1 : nil
             )
     }
 }
 
+/// A content surface: one flat neutral step and a hairline. No gradients, no
+/// glow, no shadow. Glass is reserved for the floating layer via `glassPanel`.
 struct SurfaceBackground: View {
-    var radius: CGFloat = 16
+    var radius: CGFloat = Radius.card
     var strong: Bool = false
 
     var body: some View {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
-            .fill(strong ? Palette.surfaceRaised.opacity(0.86) : Palette.surface.opacity(0.52))
+            .fill(strong ? Palette.surfaceRaised : Palette.surface)
             .overlay(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .strokeBorder(Palette.line, lineWidth: 0.7)
+                    .strokeBorder(Palette.line, lineWidth: 1)
+            )
+    }
+}
+
+struct FieldBackground: View {
+    var radius: CGFloat = Radius.control
+    var focused: Bool = false
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+            .fill(Palette.field)
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .strokeBorder(focused ? Palette.accent : Palette.line, lineWidth: focused ? 2 : 1)
             )
     }
 }
 
 extension View {
-    func surfaceCard(radius: CGFloat = 16, strong: Bool = false) -> some View {
+    func surfaceCard(radius: CGFloat = Radius.card, strong: Bool = false) -> some View {
         background(SurfaceBackground(radius: radius, strong: strong))
     }
 
     func hairlineBorder(radius: CGFloat, color: Color = Palette.line) -> some View {
         overlay(
             RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .strokeBorder(color, lineWidth: 0.7)
+                .strokeBorder(color, lineWidth: 1)
+        )
+    }
+
+    /// Real Liquid Glass. Use only for the floating layer and the navigation
+    /// rail; never stack a custom fill, stroke or shadow on top of it.
+    func glassPanel(radius: CGFloat = Radius.panel, interactive: Bool = false) -> some View {
+        glassEffect(
+            interactive ? .regular.interactive() : .regular,
+            in: RoundedRectangle(cornerRadius: radius, style: .continuous)
         )
     }
 }

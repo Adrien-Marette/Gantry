@@ -12,7 +12,7 @@ struct ProvidersSettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 16) {
                 settingsIntro("Choose which AI provider Claude Code uses. Switching a session restarts its process and resumes the same conversation.")
 
                 settingsSection("Default for new sessions") {
@@ -76,18 +76,18 @@ struct ProvidersSettingsView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    .padding(10)
+                    .padding(12)
                     .background(
-                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
                             .fill(Palette.danger.opacity(0.06))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                    .strokeBorder(Palette.danger.opacity(0.20), lineWidth: 0.7)
+                                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                                    .strokeBorder(Palette.danger.opacity(0.20), lineWidth: 1)
                             )
                     )
                 }
             }
-            .padding(26)
+            .padding(24)
         }
         .task(id: app.providers) {
             await refreshKeyPresence()
@@ -119,42 +119,32 @@ struct ProvidersSettingsView: View {
     }
 
     private func providerRow(_ provider: AIProvider) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             Button {
                 if !provider.isBuiltIn {
                     editingContext = ProviderEditorContext(provider: provider, isNew: false)
                 }
             } label: {
-                HStack(spacing: 10) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(ProviderPresentation.tint(for: provider.preset).opacity(0.10))
-                        Image(systemName: ProviderPresentation.symbol(for: provider.preset))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(ProviderPresentation.tint(for: provider.preset))
-                    }
-                    .frame(width: 30, height: 30)
+                HStack(spacing: 12) {
+                    Image(systemName: ProviderPresentation.symbol(for: provider.preset))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Palette.secondaryInk)
+                        .frame(width: 20, height: 20)
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 6) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 8) {
                             Text(provider.name)
                                 .font(Typo.captionMedium)
                                 .foregroundStyle(Palette.ink)
                                 .lineLimit(1)
                             if provider.id == app.defaultProviderID {
                                 Text("Default")
-                                    .font(.system(size: 8, weight: .semibold))
+                                    .font(.system(size: 11, weight: .medium))
                                     .foregroundStyle(Palette.accent)
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 1.5)
-                                    .background(
-                                        Capsule(style: .continuous)
-                                            .fill(Palette.accent.opacity(0.09))
-                                    )
                             }
                         }
 
-                        HStack(spacing: 5) {
+                        HStack(spacing: 6) {
                             Text(provider.isBuiltIn ? ProviderPresentation.summary(for: provider) : provider.displayBaseURL)
                                 .font(Typo.micro)
                                 .foregroundStyle(Palette.tertiaryInk)
@@ -163,7 +153,7 @@ struct ProvidersSettingsView: View {
                             if !provider.isBuiltIn {
                                 Text("·")
                                     .font(Typo.micro)
-                                    .foregroundStyle(Palette.faintInk)
+                                    .foregroundStyle(Palette.tertiaryInk)
                                 keyStatus(for: provider)
                             }
                         }
@@ -181,7 +171,7 @@ struct ProvidersSettingsView: View {
             if provider.isBuiltIn {
                 Text("Built-in")
                     .font(Typo.micro)
-                    .foregroundStyle(Palette.faintInk)
+                    .foregroundStyle(Palette.tertiaryInk)
             } else {
                 Menu {
                     Button("Edit…") {
@@ -197,17 +187,17 @@ struct ProvidersSettingsView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Palette.tertiaryInk)
-                        .frame(width: 20, height: 20)
+                        .frame(width: 24, height: 24)
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
-                .frame(width: 20)
+                .frame(width: 24)
             }
         }
-        .padding(.horizontal, 13)
-        .padding(.vertical, 9)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
     }
 
     @ViewBuilder
@@ -238,7 +228,7 @@ struct ProvidersSettingsView: View {
             Button {
                 addProvider(preset: .anthropic)
             } label: {
-                Label("Anthropic API", systemImage: "sparkles")
+                Label("Anthropic API", systemImage: "cloud")
             }
             Button {
                 addProvider(preset: .deepSeek)
@@ -253,17 +243,15 @@ struct ProvidersSettingsView: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "plus")
-                    .font(.system(size: 10.5, weight: .semibold))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Palette.accent)
-                    .frame(width: 23, height: 23)
-                    .background(Circle().fill(Palette.accent.opacity(0.09)))
                 Text("Add Provider")
                     .font(Typo.captionMedium)
                     .foregroundStyle(Palette.secondaryInk)
                 Spacer()
             }
-            .padding(.horizontal, 13)
-            .padding(.vertical, 9)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
             .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)
@@ -271,12 +259,12 @@ struct ProvidersSettingsView: View {
     }
 
     private var keychainNote: some View {
-        HStack(alignment: .top, spacing: 9) {
+        HStack(alignment: .top, spacing: 8) {
             Image(systemName: "key.fill")
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Palette.accent)
+                .foregroundStyle(Palette.tertiaryInk)
                 .padding(.top, 1)
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("API keys live in Apple Keychain.")
                     .font(Typo.captionMedium)
                     .foregroundStyle(Palette.secondaryInk)
@@ -396,9 +384,9 @@ private struct ProviderEditorView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if let errorMessage {
-                        HStack(alignment: .top, spacing: 7) {
+                        HStack(alignment: .top, spacing: 8) {
                             Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.system(size: 10.5))
+                                .font(.system(size: 11))
                                 .foregroundStyle(Palette.danger)
                                 .padding(.top, 1)
                             Text(errorMessage)
@@ -406,10 +394,10 @@ private struct ProviderEditorView: View {
                                 .foregroundStyle(Palette.danger)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
-                        .padding(10)
+                        .padding(12)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
                                 .fill(Palette.danger.opacity(0.06))
                         )
                     }
@@ -458,13 +446,13 @@ private struct ProviderEditorView: View {
                                 .font(.system(size: 11, weight: .regular, design: .monospaced))
                                 .scrollContentBackground(.hidden)
                                 .frame(height: 84)
-                                .padding(7)
+                                .padding(8)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                                         .fill(Palette.codeSurface)
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                                .strokeBorder(Palette.line, lineWidth: 0.7)
+                                                .strokeBorder(Palette.line, lineWidth: 1)
                                         )
                                 )
                             Text("Use the API key field for secrets. Keys written here are not protected by Keychain.")
@@ -479,29 +467,23 @@ private struct ProviderEditorView: View {
                         } label: {
                             Label("Fill from Claude Code", systemImage: "arrow.down.doc")
                                 .font(Typo.micro)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(
-                                    Capsule(style: .continuous)
-                                        .fill(Palette.ink.opacity(0.045))
-                                )
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.glass)
+                        .controlSize(.small)
                         .foregroundStyle(Palette.secondaryInk)
                         .help("Fill the base URL and model fields from ~/.claude/settings.json without importing any secret.")
 
                         Text("Only base URL and model fields are imported.")
                             .font(Typo.micro)
-                            .foregroundStyle(Palette.faintInk)
+                            .foregroundStyle(Palette.tertiaryInk)
                     }
                 }
-                .padding(22)
+                .padding(24)
             }
             Hairline()
             footer
         }
-        .frame(width: 590, height: 660)
-        .background(Palette.canvasGradient)
+        .frame(width: 600, height: 660)
         .task {
             keyIsBeingChecked = true
             let provider = original
@@ -522,15 +504,11 @@ private struct ProviderEditorView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 11) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(ProviderPresentation.tint(for: original.preset).opacity(0.11))
-                Image(systemName: ProviderPresentation.symbol(for: original.preset))
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(ProviderPresentation.tint(for: original.preset))
-            }
-            .frame(width: 34, height: 34)
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: ProviderPresentation.symbol(for: original.preset))
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Palette.secondaryInk)
+                .frame(width: 24, height: 24)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(isNew ? "Add Provider" : "Edit Provider")
@@ -543,18 +521,18 @@ private struct ProviderEditorView: View {
 
             Spacer()
 
-            IconButton(systemName: "xmark", help: "Close", size: 10, frame: 24) {
+            IconButton(systemName: "xmark", help: "Close", size: 11, frame: 28) {
                 dismiss()
             }
         }
-        .padding(.horizontal, 22)
-        .padding(.top, 18)
-        .padding(.bottom, 14)
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
+        .padding(.bottom, 16)
     }
 
     private var keySection: some View {
         editorSection("API key") {
-            VStack(alignment: .leading, spacing: 7) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 6) {
                     Image(systemName: keyExists ? "checkmark.circle.fill" : "key.slash")
                         .font(.system(size: 10))
@@ -568,7 +546,7 @@ private struct ProviderEditorView: View {
                     SecureField(keyExists ? "Enter a new key to replace the saved one" : "Paste API key", text: $apiKey)
                         .textFieldStyle(.plain)
                         .font(Typo.body)
-                        .padding(.horizontal, 10)
+                        .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(fieldBackground)
 
@@ -619,7 +597,7 @@ private struct ProviderEditorView: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 9) {
+        HStack(spacing: 8) {
             Text("Changes apply to sessions using this provider after their current turn.")
                 .font(Typo.micro)
                 .foregroundStyle(Palette.faintInk)
@@ -633,26 +611,20 @@ private struct ProviderEditorView: View {
             Button {
                 save()
             } label: {
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     if isSaving {
                         ProgressView().controlSize(.small)
                     }
                     Text(isSaving ? "Saving…" : "Save Provider")
                         .font(Typo.captionMedium)
                 }
-                .foregroundStyle(Palette.onAccent)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Palette.accent)
-                )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glassProminent)
+            .tint(Palette.accent)
             .disabled(isSaving)
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
     }
 
     private var keyStatusText: String {
@@ -665,12 +637,7 @@ private struct ProviderEditorView: View {
     }
 
     private var fieldBackground: some View {
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .fill(Palette.surfaceSubtle)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(Palette.line, lineWidth: 0.7)
-            )
+        FieldBackground()
     }
 
     private func labeledField(_ label: String, hint: String?, text: Binding<String>) -> some View {
@@ -681,8 +648,8 @@ private struct ProviderEditorView: View {
             TextField("", text: text)
                 .textFieldStyle(.plain)
                 .font(Typo.body)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
                 .background(fieldBackground)
             if let hint {
                 Text(hint)

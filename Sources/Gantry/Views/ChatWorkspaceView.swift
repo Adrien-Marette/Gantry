@@ -14,6 +14,7 @@ struct ChatWorkspaceView: View {
     @State private var branch: String?
     @State private var providerHasKey: Bool?
     @State private var showingRepository = false
+    @Namespace private var dockNamespace
 
     private var activity: SessionActivity? {
         app.activities[session.id]
@@ -79,25 +80,25 @@ struct ChatWorkspaceView: View {
             } label: {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(session.title)
-                        .font(.system(size: 13.5, weight: .semibold))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(Palette.ink)
                         .lineLimit(1)
                         .truncationMode(.tail)
 
-                    HStack(spacing: 5) {
-                        Image(systemName: "folder.fill")
-                            .font(.system(size: 8.5, weight: .regular))
+                    HStack(spacing: 6) {
+                        Image(systemName: "folder")
+                            .font(.system(size: 10, weight: .regular))
                         Text(project.name)
-                            .font(.system(size: 10.5))
+                            .font(.system(size: 11))
                             .lineLimit(1)
                         if let branch {
                             Text("·")
-                                .font(.system(size: 9))
+                                .font(.system(size: 10))
                                 .foregroundStyle(Palette.faintInk)
                             Image(systemName: "arrow.triangle.branch")
-                                .font(.system(size: 8, weight: .medium))
+                                .font(.system(size: 10, weight: .regular))
                             Text(branch)
-                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                .font(.system(size: 11, weight: .regular, design: .monospaced))
                                 .lineLimit(1)
                         }
                     }
@@ -109,27 +110,27 @@ struct ChatWorkspaceView: View {
             .help("Rename session")
             .layoutPriority(1)
 
-            Spacer(minLength: 10)
+            Spacer(minLength: 12)
 
             providerMenu
 
             IconButton(
                 systemName: "arrow.triangle.branch",
                 help: "Repository, pull requests, and checks",
-                frame: 27
+                frame: 28
             ) {
                 showingRepository = true
             }
 
             if let activity, activity.isRunning {
-                runStatusPill(activity)
-                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                runStatus(activity)
+                    .transition(.opacity)
             }
 
             IconButton(
                 systemName: "sidebar.right",
                 help: app.inspectorVisible ? "Hide inspector (⇧⌘I)" : "Show inspector (⇧⌘I)",
-                frame: 27
+                frame: 28
             ) {
                 app.inspectorVisible.toggle()
             }
@@ -154,26 +155,19 @@ struct ChatWorkspaceView: View {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Palette.secondaryInk)
-                    .frame(width: 27, height: 27)
+                    .frame(width: 28, height: 28)
                     .contentShape(Rectangle())
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
-            .frame(width: 24)
+            .frame(width: 28)
             .help("Session actions")
         }
         .padding(.leading, 24)
-        .padding(.trailing, 18)
-        .frame(height: 55)
-        .background(
-            LinearGradient(
-                colors: [Palette.canvasTop.opacity(0.78), Palette.canvasTop.opacity(0.25)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
+        .padding(.trailing, 20)
+        .frame(height: 56)
         .overlay(alignment: .bottom) { Hairline() }
-        .animation(.smooth(duration: 0.2), value: activity?.isRunning)
+        .animation(.easeOut(duration: 0.16), value: activity?.isRunning)
     }
 
     private var providerMenu: some View {
@@ -207,66 +201,48 @@ struct ChatWorkspaceView: View {
                 openSettings()
             }
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: 6) {
                 Image(systemName: ProviderPresentation.symbol(for: provider.preset))
-                    .font(.system(size: 9.5, weight: .medium))
-                    .foregroundStyle(ProviderPresentation.tint(for: provider.preset))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Palette.tertiaryInk)
                 Text(provider.name)
-                    .font(Typo.micro)
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Palette.secondaryInk)
                     .lineLimit(1)
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 7, weight: .semibold))
-                    .foregroundStyle(Palette.faintInk)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Palette.tertiaryInk)
             }
-            .frame(maxWidth: 145, alignment: .leading)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5.5)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(Palette.surface.opacity(0.45))
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .strokeBorder(Palette.lineStrong, lineWidth: 0.7)
-                    )
-            )
-            .contentShape(Capsule(style: .continuous))
+            .frame(maxWidth: 160, alignment: .leading)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
         .disabled(activity?.isRunning == true)
-        .opacity(activity?.isRunning == true ? 0.58 : 1)
+        .opacity(activity?.isRunning == true ? 0.5 : 1)
         .help(activity?.isRunning == true
               ? "Finish the current turn to switch AI providers"
               : "AI provider for this session")
         .accessibilityLabel("AI provider: \(provider.name)")
     }
 
-    private func runStatusPill(_ activity: SessionActivity) -> some View {
-        HStack(spacing: 7) {
+    private func runStatus(_ activity: SessionActivity) -> some View {
+        HStack(spacing: 8) {
             if activity.hasPendingPermission {
                 Image(systemName: "hand.raised.fill")
-                    .font(.system(size: 9.5, weight: .semibold))
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(Palette.accent)
             } else {
-                ActivityDots(color: Palette.accent, size: 2.7)
+                LiveIndicator(color: Palette.accent, size: 12)
             }
             Text(activity.statusText ?? "Working")
                 .font(Typo.micro)
                 .foregroundStyle(Palette.secondaryInk)
                 .lineLimit(1)
         }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 5)
-        .background(
-            Capsule(style: .continuous)
-                .fill(Palette.surface.opacity(0.45))
-                .overlay(
-                    Capsule(style: .continuous)
-                        .strokeBorder(Palette.lineStrong, lineWidth: 0.7)
-                )
-        )
     }
 
     // MARK: - Conversation
@@ -302,8 +278,8 @@ struct ChatWorkspaceView: View {
                         }
                         .frame(maxWidth: 816)
                         .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 30)
-                        .padding(.top, session.turns.isEmpty ? 0 : 22)
+                        .padding(.horizontal, 32)
+                        .padding(.top, session.turns.isEmpty ? 0 : 24)
                     }
                     .scrollIndicators(.never)
                     .scrollEdgeEffectStyle(.soft, for: .top)
@@ -341,7 +317,7 @@ struct ChatWorkspaceView: View {
                     .allowsHitTesting(false)
 
                 dock
-                    .padding(.horizontal, 28)
+                    .padding(.horizontal, 32)
                     .padding(.bottom, 16)
                     .frame(maxWidth: 880)
                     .background(
@@ -361,17 +337,16 @@ struct ChatWorkspaceView: View {
     private var transcript: some View {
         let firstTurnID = session.turns.first?.id
         return LazyVStack(alignment: .leading, spacing: 0) {
-            Text(Format.dayLabel(session.createdAt).uppercased())
-                .font(.system(size: 9, weight: .semibold))
-                .tracking(0.8)
+            Text(Format.dayLabel(session.createdAt))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Palette.tertiaryInk)
                 .frame(maxWidth: .infinity)
-                .padding(.bottom, 22)
+                .padding(.bottom, 24)
 
             ForEach(session.turns) { turn in
                 if turn.role == .user {
                     UserTurnView(turn: turn)
-                        .padding(.top, turn.id == firstTurnID ? 0 : 28)
+                        .padding(.top, turn.id == firstTurnID ? 0 : 32)
                 } else {
                     AssistantTurnView(
                         turn: turn,
@@ -380,7 +355,7 @@ struct ChatWorkspaceView: View {
                         projectPath: project.path,
                         onRetry: { app.retryLastPrompt(sessionID: session.id) }
                     )
-                    .padding(.top, turn.id == firstTurnID ? 0 : 14)
+                    .padding(.top, turn.id == firstTurnID ? 0 : 16)
                 }
             }
         }
@@ -393,85 +368,103 @@ struct ChatWorkspaceView: View {
     private var bottomFade: some View {
         LinearGradient(
             stops: [
-                .init(color: Palette.canvasBottom.opacity(0), location: 0),
-                .init(color: Palette.canvasBottom.opacity(0.58), location: 0.42),
-                .init(color: Palette.canvasBottom.opacity(0.93), location: 1)
+                .init(color: Palette.canvas.opacity(0), location: 0),
+                .init(color: Palette.canvas.opacity(0.55), location: 0.42),
+                .init(color: Palette.canvas.opacity(0.92), location: 1)
             ],
             startPoint: .top,
             endPoint: .bottom
         )
-        .frame(height: max(210, dockHeight + 86))
+        .frame(height: max(208, dockHeight + 88))
     }
 
     // MARK: - Floating dock
 
     private var dock: some View {
-        VStack(spacing: 9) {
-            if provider.requiresAPIKey, providerHasKey == false {
-                InlineNotice(
-                    icon: "key.slash",
-                    title: "API key needed",
-                    message: "Add an API key for \(provider.name) in Settings → Providers before sending a message.",
-                    tint: Palette.warning,
-                    actionTitle: "Add Key",
-                    action: {
-                        app.requestedSettingsTab = "providers"
-                        openSettings()
-                    }
-                )
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
-            }
-
-            if let availabilityNotice {
-                InlineNotice(
-                    icon: availabilityNotice.icon,
-                    title: availabilityNotice.title,
-                    message: availabilityNotice.message,
-                    tint: availabilityNotice.tint,
-                    actionTitle: "Settings",
-                    action: { openSettings() }
-                )
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
-            }
-
-            if let banner = activity?.banner {
-                InlineNotice(
-                    icon: "exclamationmark.circle.fill",
-                    title: "Something needs attention",
-                    message: banner,
-                    tint: Palette.danger,
-                    actionTitle: nil,
-                    action: nil,
-                    onDismiss: { activity?.banner = nil }
-                )
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
-            }
-
-            GlassEffectContainer(spacing: 9) {
-                VStack(spacing: 9) {
-                    if let pendingPermission, let activity {
-                        PermissionRequestCard(
-                            request: pendingPermission,
-                            project: project,
-                            queuedCount: max(0, activity.pendingPermissions.count - 1)
-                        ) { action in
-                            app.respond(to: pendingPermission, action: action, sessionID: session.id)
+        GlassEffectContainer(spacing: 8) {
+            VStack(spacing: 8) {
+                if provider.requiresAPIKey, providerHasKey == false {
+                    InlineNotice(
+                        icon: "key.slash",
+                        title: "API key needed",
+                        message: "Add an API key for \(provider.name) in Settings → Providers before sending a message.",
+                        tint: Palette.warning,
+                        actionTitle: "Add Key",
+                        action: {
+                            app.requestedSettingsTab = "providers"
+                            openSettings()
                         }
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
-
-                    ComposerView(
-                        session: session,
-                        project: project,
-                        activity: activity,
-                        providerReady: providerIsReady
                     )
+                    .transition(.opacity)
                 }
+
+                if let availabilityNotice {
+                    InlineNotice(
+                        icon: availabilityNotice.icon,
+                        title: availabilityNotice.title,
+                        message: availabilityNotice.message,
+                        tint: availabilityNotice.tint,
+                        actionTitle: "Settings",
+                        action: { openSettings() }
+                    )
+                    .transition(.opacity)
+                }
+
+                if let banner = activity?.banner {
+                    InlineNotice(
+                        icon: "exclamationmark.circle.fill",
+                        title: "Something needs attention",
+                        message: banner,
+                        tint: Palette.danger,
+                        actionTitle: nil,
+                        action: nil,
+                        onDismiss: { activity?.banner = nil }
+                    )
+                    .transition(.opacity)
+                }
+
+                if let pendingPermission, let activity {
+                    Group {
+                        if let questionnaire = pendingPermission.questionnaire {
+                            QuestionRequestCard(
+                                request: pendingPermission,
+                                questionnaire: questionnaire,
+                                queuedCount: max(0, activity.pendingPermissions.count - 1),
+                                glassNamespace: dockNamespace,
+                                onSubmit: { answers in
+                                    app.answer(pendingPermission, with: answers, sessionID: session.id)
+                                },
+                                onDecline: {
+                                    app.declineQuestion(pendingPermission, sessionID: session.id)
+                                }
+                            )
+                        } else {
+                            PermissionRequestCard(
+                                request: pendingPermission,
+                                project: project,
+                                queuedCount: max(0, activity.pendingPermissions.count - 1),
+                                glassNamespace: dockNamespace
+                            ) { action in
+                                app.respond(to: pendingPermission, action: action, sessionID: session.id)
+                            }
+                        }
+                    }
+                    .id(pendingPermission.requestID)
+                    .transition(.opacity)
+                }
+
+                ComposerView(
+                    session: session,
+                    project: project,
+                    activity: activity,
+                    providerReady: providerIsReady,
+                    glassNamespace: dockNamespace
+                )
             }
         }
-        .animation(.smooth(duration: 0.24), value: activity?.pendingPermissions.count)
-        .animation(.smooth(duration: 0.20), value: activity?.banner)
-        .animation(.smooth(duration: 0.20), value: app.claudeAvailability)
+        .animation(.easeOut(duration: 0.2), value: activity?.pendingPermissions.count)
+        .animation(.easeOut(duration: 0.16), value: activity?.banner)
+        .animation(.easeOut(duration: 0.16), value: app.claudeAvailability)
     }
 
     private var availabilityNotice: (icon: String, title: String, message: String, tint: Color)? {
@@ -499,7 +492,7 @@ struct ChatWorkspaceView: View {
 
     private func scrollToBottom(_ proxy: ScrollViewProxy, animated: Bool) {
         if animated {
-            withAnimation(.smooth(duration: 0.24)) {
+            withAnimation(.easeOut(duration: 0.2)) {
                 proxy.scrollTo("bottom", anchor: .bottom)
             }
         } else {
@@ -550,7 +543,7 @@ struct InlineNotice: View {
     var onDismiss: (() -> Void)?
 
     var body: some View {
-        HStack(alignment: .top, spacing: 9) {
+        HStack(alignment: .top, spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(tint)
@@ -572,15 +565,10 @@ struct InlineNotice: View {
             if let actionTitle, let action {
                 Button(action: action) {
                     Text(actionTitle)
-                        .font(Typo.micro)
-                        .foregroundStyle(Palette.secondaryInk)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(Palette.ink.opacity(0.055))
-                                .overlay(Capsule(style: .continuous).strokeBorder(Palette.line, lineWidth: 0.7))
-                        )
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Palette.accent)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
                 }
                 .buttonStyle(.plain)
             }
@@ -588,24 +576,17 @@ struct InlineNotice: View {
             if let onDismiss {
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 8.5, weight: .semibold))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(Palette.tertiaryInk)
-                        .frame(width: 18, height: 18)
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Palette.surfaceRaised.opacity(0.86))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(Palette.lineStrong, lineWidth: 0.7)
-                )
-                .shadow(color: Palette.shadow.opacity(0.16), radius: 10, y: 4)
-        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .glassPanel(radius: 16)
     }
 }
 
@@ -645,33 +626,27 @@ struct EmptySessionView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 22) {
-            VStack(spacing: 8) {
-                HStack(spacing: 7) {
-                    Image(systemName: "folder.fill")
-                        .font(.system(size: 9, weight: .regular))
+        VStack(spacing: 24) {
+            VStack(spacing: 12) {
+                HStack(spacing: 6) {
+                    Image(systemName: "folder")
+                        .font(.system(size: 10, weight: .regular))
                     Text(project.name)
                         .font(Typo.micro)
                     if let branch {
-                        Text("·").font(.system(size: 8))
+                        Text("·").font(.system(size: 10))
+                            .foregroundStyle(Palette.tertiaryInk)
                         Image(systemName: "arrow.triangle.branch")
-                            .font(.system(size: 8.5))
+                            .font(.system(size: 10))
                         Text(branch)
-                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .font(.system(size: 11, weight: .regular, design: .monospaced))
                     }
                 }
                 .foregroundStyle(Palette.tertiaryInk)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(Palette.surface.opacity(0.42))
-                        .overlay(Capsule(style: .continuous).strokeBorder(Palette.line, lineWidth: 0.7))
-                )
 
                 Text("What should we make?")
-                    .font(.system(size: 30, weight: .semibold))
-                    .tracking(-0.7)
+                    .font(.system(size: 28, weight: .semibold))
+                    .tracking(-0.5)
                     .foregroundStyle(Palette.ink)
 
                 Text("Start with an idea, a bug, or a question.")
@@ -681,10 +656,10 @@ struct EmptySessionView: View {
 
             LazyVGrid(
                 columns: [
-                    GridItem(.flexible(), spacing: 10),
-                    GridItem(.flexible(), spacing: 10)
+                    GridItem(.flexible(), spacing: 8),
+                    GridItem(.flexible(), spacing: 8)
                 ],
-                spacing: 10
+                spacing: 8
             ) {
                 ForEach(Array(suggestions.enumerated()), id: \.offset) { _, suggestion in
                     SuggestionCard(suggestion: suggestion, enabled: isAvailable) {
@@ -694,12 +669,23 @@ struct EmptySessionView: View {
             }
             .frame(maxWidth: 610)
 
-            Text("⌘K  Commands     ⇧⌘I  Inspector")
-                .font(Typo.micro)
-                .foregroundStyle(Palette.faintInk)
+            HStack(spacing: 10) {
+                HStack(spacing: 4) {
+                    KeyHint(text: "⌘K")
+                    Text("Commands").font(Typo.micro).foregroundStyle(Palette.faintInk)
+                }
+                HStack(spacing: 4) {
+                    KeyHint(text: "/")
+                    Text("Slash commands").font(Typo.micro).foregroundStyle(Palette.faintInk)
+                }
+                HStack(spacing: 4) {
+                    KeyHint(text: "⇧⌘I")
+                    Text("Inspector").font(Typo.micro).foregroundStyle(Palette.faintInk)
+                }
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 26)
+        .padding(.vertical, 24)
         .task(id: project.path) {
             branch = GitContext.read(from: project.url).branch
         }
@@ -714,19 +700,16 @@ private struct SuggestionCard: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .top, spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Palette.accent.opacity(isHovering ? 0.14 : 0.085))
-                    Image(systemName: suggestion.icon)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Palette.accent)
-                }
-                .frame(width: 28, height: 28)
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: suggestion.icon)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Palette.secondaryInk)
+                    .frame(width: 16, height: 16)
+                    .padding(.top, 1)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(suggestion.title)
-                        .font(.system(size: 12.5, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Palette.ink)
                         .lineLimit(1)
                     Text(suggestion.subtitle)
@@ -735,24 +718,22 @@ private struct SuggestionCard: View {
                         .lineLimit(1)
                 }
 
-                Spacer(minLength: 2)
+                Spacer(minLength: 4)
 
                 Image(systemName: "arrow.up.right")
-                    .font(.system(size: 8.5, weight: .semibold))
-                    .foregroundStyle(isHovering ? Palette.accent : Palette.faintInk)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Palette.tertiaryInk)
                     .padding(.top, 2)
             }
-            .padding(10)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Palette.surface.opacity(isHovering ? 0.62 : 0.40))
+                RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+                    .fill(isHovering ? Palette.surfaceRaised : Palette.surface)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(
-                                isHovering ? Palette.accent.opacity(0.28) : Palette.line,
-                                lineWidth: 0.7
-                            )
+                        RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+                            .strokeBorder(isHovering ? Palette.lineStrong : Palette.line, lineWidth: 1)
                     )
             )
             .contentShape(Rectangle())
@@ -769,10 +750,10 @@ struct ProjectLandingView: View {
     var project: Project
 
     var body: some View {
-        VStack(spacing: 18) {
-            EmptyStateSpark()
+        VStack(spacing: 16) {
+            BrandMark(size: 44)
             Text(project.name)
-                .font(.system(size: 28, weight: .semibold))
+                .font(Typo.pageTitle)
                 .foregroundStyle(Palette.ink)
             Text("Create a session to start working in this project.")
                 .font(Typo.caption)
@@ -780,9 +761,9 @@ struct ProjectLandingView: View {
             Button {
                 _ = app.newSession(in: project.id)
             } label: {
-                Text("New Session")
+                Text("New session")
                     .font(Typo.ui)
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, 16)
                     .padding(.vertical, 8)
             }
             .buttonStyle(.glassProminent)

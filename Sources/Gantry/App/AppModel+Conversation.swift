@@ -627,9 +627,15 @@ extension AppModel {
             if let model = message.model,
                !model.isEmpty,
                model != "<synthetic>" {
-                // Keep a resolved name such as `deepseek-flash[1m]` from a
-                // previous result; assistant events report the unresolved id.
-                if session.contextModelName == nil || model.contains("[1m]") {
+                // Context belongs to the model that produced this response.
+                // Keep a resolved `[1m]` spelling for the same model, but do
+                // not let a model switch leave a stale context window behind.
+                let existing = session.contextModelName
+                let existingBase = existing?
+                    .replacingOccurrences(of: "[1m]", with: "", options: .caseInsensitive)
+                let keepsResolvedName = existing?.lowercased().contains("[1m]") == true
+                    && existingBase?.caseInsensitiveCompare(model) == .orderedSame
+                if !keepsResolvedName {
                     session.contextModelName = model
                 }
             } else if session.contextModelName == nil {
@@ -835,11 +841,15 @@ extension AppModel {
                !reportedModel.isEmpty {
                 session.actualModelName = reportedModel
             }
-            // `modelUsage` keys carry Claude Code's resolved name, including a
-            // `[1m]` marker. Prefer it so the context meter can size the window
-            // accurately instead of guessing from the requested alias.
-            if let reportedModel = usage.modelName, !reportedModel.isEmpty {
-                session.contextModelName = reportedModel
+            // `modelUsage` is cumulative and may be dominated by a subagent.
+            // It must not choose the context model. Only resolve a `[1m]`
+            // spelling for the assistant model that produced the context.
+            if let contextModel = session.contextModelName,
+               !contextModel.lowercased().contains("[1m]"),
+               let resolved = result.modelUsage.keys.first(where: {
+                   $0.caseInsensitiveCompare(contextModel + "[1m]") == .orderedSame
+               }) {
+                session.contextModelName = resolved
             }
             // A result without a cumulative snapshot must not keep a stale
             // baseline: the next cumulative report would otherwise price the

@@ -244,6 +244,24 @@ private func reviewedFile(_ path: String, displayPath: String) -> ReviewedFile {
     #expect(relative.paths == ["Sources/C.swift"])
 }
 
+@Test func commitPlanExcludesDirectories() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("Gantry-commit-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let replaced = root.appendingPathComponent("Change.swift", isDirectory: true)
+    try FileManager.default.createDirectory(at: replaced, withIntermediateDirectories: true)
+
+    let plan = GitCommitService.plan(
+        files: [reviewedFile(replaced.path, displayPath: "Change.swift")],
+        projectPath: root.path
+    )
+
+    #expect(plan.isEmpty)
+    #expect(plan.excludedDisplayPaths == ["Change.swift"])
+}
+
 private final class FakeGitRunner: GitCommandRunning, @unchecked Sendable {
     private let lock = NSLock()
     private var results: [GitCommandResult]
@@ -286,8 +304,8 @@ private final class FakeGitRunner: GitCommandRunning, @unchecked Sendable {
 
     #expect(output.contains("feat: review changes"))
     #expect(runner.calls == [
-        ["--literal-pathspecs", "add", "--", "Sources/A.swift"],
-        ["--literal-pathspecs", "commit", "-m", "feat: review changes", "--", "Sources/A.swift"]
+        ["add", "--", ":(literal)Sources/A.swift"],
+        ["commit", "-m", "feat: review changes", "--", ":(literal)Sources/A.swift"]
     ])
     let flattened = runner.calls.flatMap { $0 }
     #expect(!flattened.contains("--no-verify"))
@@ -312,14 +330,13 @@ private final class FakeGitRunner: GitCommandRunning, @unchecked Sendable {
         in: URL(fileURLWithPath: "/tmp/project")
     )
 
-    #expect(runner.calls[0] == ["--literal-pathspecs", "add", "--", "A.swift"])
+    #expect(runner.calls[0] == ["add", "--", ":(literal)A.swift"])
     #expect(runner.calls[1] == [
-        "--literal-pathspecs",
         "commit",
         "-m",
         "fix: only the project file",
         "--",
-        "A.swift"
+        ":(literal)A.swift"
     ])
 }
 
@@ -384,13 +401,13 @@ private final class FakeGitRunner: GitCommandRunning, @unchecked Sendable {
     let initialized = try await runner.runGit(["init", "-q"], in: root)
     #expect(initialized.exitCode == 0)
     let staged = try await runner.runGit(
-        ["--literal-pathspecs", "add", "--", name],
+        ["add", "--", ":(literal)\(name)"],
         in: root
     )
     #expect(staged.exitCode == 0)
 
     let status = try await runner.runGit(
-        ["--literal-pathspecs", "status", "--porcelain", "--", name],
+        ["status", "--porcelain", "--", ":(literal)\(name)"],
         in: root
     )
     #expect(status.stdout.contains("A  \(name)"))

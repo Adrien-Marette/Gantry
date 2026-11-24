@@ -224,7 +224,7 @@ The **Extensions & Mods** page in the sidebar (or `⇧⌘E`) manages the Claude 
 - The repository panel and MCP tools expose open pull requests, conversation comments, CI checks, and pull-request creation. Inline review threads, merging, and dispatching CI workflows are not included; checks are read-only.
 - Code-host features need an `origin` remote. When several accounts match a host, the selected account is remembered per project.
 - The MCP bridge is scoped to one repository and requires the bundled `Gantry-plugins` helper, which the provided build script includes. It is only active when the chat's Claude Code process starts with a matching plugin; changing code hosts recycles idle runtimes.
-- No file or image attachments or MCP elicitation UI. Standard permission prompts and `AskUserQuestion` dialogs are supported.
+- Image attachments and MCP elicitation UI are not supported. File and folder paths can be attached from the composer, and standard permission prompts and `AskUserQuestion` dialogs are supported.
 - Slash commands whose interface is terminal-only, such as prompt-bar color or focus mode, run through Claude Code but have no visual effect in Gantry. `/clear` starts a new Gantry session and `/rename` changes the session title.
 - Files edited via Bash are not listed in the inspector's edited-files list (only file-editing tools such as Edit, MultiEdit, Write, and NotebookEdit are).
 - Idle Claude Code processes stay alive while the app is open, which keeps follow-ups fast at the cost of memory.

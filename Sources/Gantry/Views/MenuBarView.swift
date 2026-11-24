@@ -553,7 +553,11 @@ private struct MenuBarQuestionForm: View {
                 .controlSize(.small)
                 .font(Typo.caption)
                 .onSubmit { submitIfPossible() }
-                if let hint = rangeHint(question) {
+                if let message = answers[question.answerKey]?.validationMessage(for: question) {
+                    Text(message)
+                        .font(Typo.micro)
+                        .foregroundStyle(Palette.danger)
+                } else if let hint = rangeHint(question) {
                     Text(hint)
                         .font(Typo.micro)
                         .foregroundStyle(Palette.tertiaryInk)

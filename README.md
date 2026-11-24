@@ -2,7 +2,7 @@
 
 A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid Glass. It runs Claude Code in the background and keeps the conversation, project context, streaming output, tool permissions, and AI provider choice in one calm window instead of a terminal.
 
-**Gantry 0.3.5** refreshes the interface around a warm neutral palette and Apple's Liquid Glass, and stops hover from scrolling the command pickers.
+**Gantry 0.4.0** adds a context meter, file and folder attachments, Review & Ship, conversation-wide search, and a menu bar that keeps Claude working when the window is closed.
 
 ![Gantry welcome](docs/screenshot-welcome.jpg)
 
@@ -11,6 +11,15 @@ A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid G
 ![Claude Code permission card](docs/screenshot-permission.jpg)
 
 ![AI providers](docs/screenshot-providers.jpg)
+
+## What's new in 0.4.0
+
+- **Context meter.** The composer shows how many prompt tokens Claude Code last reported, sized from the resolved model name — including `[1m]` variants — and warns as the window fills.
+- **Attach files and folders.** Drag files onto the composer or use the paperclip. Attachments become removable chips and their paths are added to the prompt, with Claude's own Read permission still in charge.
+- **Review & Ship.** A session review sheet gathers Claude's file edits with diffs and per-file notes. Notes go back to Claude as one message; **Commit…** commits only the reviewed project files, respects hooks and signing, and never pushes.
+- **Search every conversation.** `⇧⌘F` searches titles, prompts, answers, commands, and file paths across every project and jumps directly to the matching turn.
+- **Runs in the menu bar.** Closing the window hides Gantry without stopping Claude. The menu bar item shows pending requests, running sessions, and finished turns, and lets you allow or deny actions and answer questions without reopening the window.
+- **Composer and window fixes.** Return sends, Shift-Return inserts a newline at the caret, and window dragging now uses a native drag surface instead of the SwiftUI background gesture.
 
 ## What's new in 0.3.5
 
@@ -39,10 +48,15 @@ A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid G
 - **Code-host plugins.** Connect GitHub, GitLab, or Gitea accounts in **Settings → Code Hosts**, then open the repository panel from any chat. It detects the project's `origin` remote and can list open pull requests, inspect CI checks, post a comment, or create a pull request. When multiple accounts match a host, choose the one for the project. Matching plugins are also exposed to Claude Code as a scoped MCP server.
 - **Extensions & mods.** A top-level page for the Claude Code plugin ecosystem: browse marketplaces, install and manage skills, commands, agents, hooks, MCP bundles, and UI mods, favorite source repositories, and create your own mod. Installed state stays with Claude Code's `claude plugin` CLI, so the same extensions work in the terminal. Installing third-party code always requires a trust review; marketplace-declared install commands need a separate explicit approval and are never auto-accepted. Changes apply to new chats, and running chats restart their Claude process after the current turn.
 - **Slash commands, including extension and mod commands.** Type `/` in the composer to open a filtered list of the session's commands. The menu shows each command's argument hint and description, and labels commands contributed by an extension or mod. Arrow keys navigate; Return completes the highlighted command so you can add arguments. It runs immediately if the typed token exactly matches the highlighted command's name or alias. The catalog is requested from the chat's own Claude Code process, so project commands, installed plugins, and mods loaded with `--plugin-dir` appear without a first prompt. `/clear` starts a new Gantry session and `/rename` updates the displayed title, so the two commands that manage session identity stay in sync with Gantry's own state.
+- **Context meter.** The composer shows how many prompt tokens Claude Code last reported, including cached context, as a quiet bar against the model's context window. It uses the resolved model name Claude Code reports, so 1M variants such as `deepseek-flash[1m]` are sized at 1M; standard Anthropic generations use 200K. It turns cautionary and then destructive as the window fills, so long conversations show when a compaction is near. Return sends and Shift-Return inserts a newline.
+- **Attach files and folders.** Drag files or folders onto the composer, or use the paperclip. Attachments appear as removable chips and their absolute paths are added to the prompt, so Claude can read them with its normal tools and permissions. A prompt can be attachments alone, and dropping files highlights the composer with the same accent focus ring.
+- **Review & Ship.** Open **Review changes** from the chat header, the inspector, or `⇧⌘R` to see every file Claude edited in one place. Each file keeps its changes in order with a native diff, line counts, and a note field; **Send notes** turns the notes into one focused message back to Claude. **Commit…** commits exactly the reviewed project files with your message, uses your Git signing and hooks normally, and never pushes.
 - **Keys in Apple Passwords.** Provider API keys are written to the macOS Keychain as internet-password items, never to Gantry's session file, logs, or command line. When iCloud Keychain is available, they can sync through Apple Passwords. Keys can be entered, replaced, or removed from **Settings → Providers** and are shown as masked fields only.
 - **Sessions that survive restarts.** Projects, chats, provider choice, model choice, and permission mode are stored locally. The Claude Code session ID is resumed automatically after relaunch.
+- **Runs in the menu bar.** Closing the window hides Gantry but keeps Claude Code running. The menu bar item shows working sessions, finished turns, and requests that need you; its popover lets you allow or deny actions and answer Claude's questions without reopening the main window. **Open Gantry** restores the window; **Quit Gantry** or ⌘Q stops background work.
 - **Real tool activity.** Bash, Read, Write, Edit, Task, web, MCP, and other tool calls appear as compact, inspectable rows. Expanded views show commands, file diffs, output, todos, and structured results.
 - **Model-aware cost estimates.** Turn and session costs are calculated from the reported model's published token pricing and actual usage, instead of relying on Claude Code's cost assumptions. Unknown models fall back to the estimate Claude Code reports. These are estimates, not billing data.
+- **Search every conversation.** `⇧⌘F` searches session titles, prompts, answers, commands, and file paths across every project. Results show a snippet with the match highlighted; Return opens the session and scrolls to the matching turn. The sidebar field remains a quick filter for session names.
 - **Workbench details.** A sidebar for projects and sessions, a command palette (`⌘K`), streaming Markdown with code highlighting and tables, a session inspector, and a model-aware estimated usage view.
 - **A design that belongs on macOS.** SF typography, a warm neutral canvas, system/light/dark appearance, and Apple's Liquid Glass (`glassEffect` and `GlassEffectContainer`) for the sidebar and the floating controls. Content surfaces stay flat with hairlines instead of imitating glass. macOS 26 or later is required for the glass APIs.
 
@@ -201,7 +215,7 @@ The **Extensions & Mods** page in the sidebar (or `⇧⌘E`) manages the Claude 
 
 ## Current limits
 
-- Single-window app, macOS 26+ only.
+- Single main window with a menu bar extra, macOS 26+ only.
 - Provider switching applies between turns; it is disabled while a response is in flight.
 - Provider profiles are per session and remembered. Existing sessions keep their provider when the default changes.
 - Code-host plugins use personal access tokens; there is no browser-based OAuth flow.
@@ -243,6 +257,11 @@ Sources/GantryCore/
   AppDataStore.swift    Local state and log paths
   MarkdownParser.swift  Dependency-free block Markdown parser
   ModelPricing.swift    Published per-model pricing and model-aware cost estimation
+  ModelContextWindow.swift Context-window sizes used by the composer's context meter
+  SessionReview.swift   Completed file edits aggregated for review and Claude notes
+  SessionSearch.swift   In-memory full-text search over titles, turns, and tool paths
+  PromptAttachments.swift Composer file/folder attachments and prompt composition
+  GitCommit.swift       Pathspec staging and commit service; never pushes or bypasses hooks
 Sources/Gantry/
   App/                  App entry, observable state, providers, plugins, extensions, MCP bridge lifecycle, conversation orchestration
   Design/               Palette, type scale, surface and glass helpers, brand mark, shared controls

@@ -439,6 +439,11 @@ public struct ChatSession: Codable, Hashable, Identifiable, Sendable {
     /// Last cumulative per-model usage reported by Claude Code. Used to price
     /// the next turn from the difference rather than from its assumptions.
     public var modelUsage: [String: ModelTokenUsage]?
+    /// Prompt tokens in the latest request, including cache reads and writes.
+    /// Optional so state written before the context bar decodes unchanged.
+    public var contextTokens: Int?
+    /// Model that reported `contextTokens`, used to pick a context-window size.
+    public var contextModelName: String?
     /// Claude Code's own cumulative cost, kept separately from Gantry's
     /// model-priced estimate so fallback deltas stay on the same scale.
     public var claudeReportedCostUSD: Double?
@@ -458,6 +463,8 @@ public struct ChatSession: Codable, Hashable, Identifiable, Sendable {
         totalCostUSD: Double = 0,
         providerID: UUID? = nil,
         modelUsage: [String: ModelTokenUsage]? = nil,
+        contextTokens: Int? = nil,
+        contextModelName: String? = nil,
         claudeReportedCostUSD: Double? = nil
     ) {
         self.id = id
@@ -474,6 +481,8 @@ public struct ChatSession: Codable, Hashable, Identifiable, Sendable {
         self.totalCostUSD = totalCostUSD
         self.providerID = providerID
         self.modelUsage = modelUsage
+        self.contextTokens = contextTokens
+        self.contextModelName = contextModelName
         self.claudeReportedCostUSD = claudeReportedCostUSD
     }
 

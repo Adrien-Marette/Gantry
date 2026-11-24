@@ -116,8 +116,12 @@ Do not introduce letter-spacing, uppercase labels, or a second type family.
 
 ## Geometry
 
-- **Window:** single window, minimum 1040 × 700, full-size content, transparent
-  title bar. No tabbing.
+- **Window:** one main window plus a menu bar extra, minimum 1040 × 700,
+  full-size content, transparent title bar. No tabbing. Closing the main window
+  hides the app instead of quitting: Claude keeps working and the menu bar extra
+  remains. Move the window by dragging the chat header or the sidebar header;
+  the drag stays native so the Window Server receives the original mouse-down
+  rather than a synthesized gesture.
 - **Sidebar:** fixed 264 pt, real glass, trailing hairline.
 - **Inspector:** 306 pt, content surfaces, trailing reveal.
 - **Settings:** 620 × 460.
@@ -233,6 +237,13 @@ Errors are concise, plain language, and keep technical detail secondary.
 model and permission controls, and a circular send/stop button. Return sends;
 Shift-Return inserts a newline. While a slash token is being typed, Return
 chooses the highlighted command instead of sending. Focus is an accent ring.
+Above the text field, a quiet context meter shows the prompt tokens Claude Code
+last reported against the model's window, sized from Claude Code's resolved
+model name, with a neutral fill that turns warning and then danger as the
+window fills. Files and folders can be dragged onto the glass or chosen with the
+paperclip; chips sit above the text field with a quiet ink wash and hairline,
+and a drop uses the same accent focus ring. A prompt may consist of attachments
+alone.
 
 **Permission card** — a floating glass card above the composer. It names the
 tool and target, shows details on demand, and offers **Allow once**, a
@@ -255,8 +266,25 @@ stay neutral.
 move the highlight; Return runs or completes; Escape closes. Hover highlights a
 row but must not scroll the list.
 
+**Conversation search** — a content sheet opened with `⇧⌘F`, not glass. An
+auto-focused search field sits above a quiet result list: role icon, session
+title, one or two lines of snippet with the match in the accent, project name,
+and relative time. Arrow keys move the selection and scroll; hover highlights
+without scrolling; Return opens the session and reveals the matching turn. The
+empty state explains that titles, prompts, answers, commands, and paths are
+searched; the sidebar field remains a session filter.
+
 **Inspector** — content cards for session usage, estimated cost, token totals,
-and changed files. Keep figures tabular and labels quiet.
+and changed files. Keep figures tabular and labels quiet. **Review** in the
+Edited files card opens the review sheet.
+
+**Review changes** — a content sheet, not glass, that gathers Claude's file
+edits for the session. A quiet file rail on the left shows relative paths,
+added/removed counts, a New marker, and a note indicator; the selected file
+shows its diffs as code surfaces with a note field. **Send notes** is the
+primary action when notes exist; **Commit…** opens a confirmation sheet that
+lists exactly the files and message Git will receive. Never auto-commit, never
+push, and never hide the file list being committed.
 
 **Settings** — General, Code Hosts, Providers, Claude Code, About. Group rows
 in `surfaceCard` sections with hairlines between rows. Destructive actions
@@ -271,6 +299,17 @@ destructive and confirmed.
 states use semantic colors; write actions confirm what will change on the
 remote.
 
+**Menu bar extra** — a system status item, not a glass surface. Its icon and
+optional count reflect the highest-priority state: requests waiting, sessions
+running, turns finished, or idle. The popover header shows the lockup and a
+quiet status badge, then sections for **Needs you**, **Working**, and
+**Finished**. Permission cards use native bordered buttons and keep Deny,
+the contextual always-allow action, and Allow once. Question cards are compact
+forms with the same choice, text, number, and multi-select answers as the main
+card, plus Decline. The footer holds **Open Gantry**, **Settings**, and
+**Quit Gantry**. Closing the main window hides the app while leaving all of this
+available and does not stop turns.
+
 ## Accessibility
 
 - Every icon-only control has a meaningful `.help` and `.accessibilityLabel`.
@@ -280,7 +319,8 @@ remote.
 - Keep contrast for secondary text; do not use `faintInk` for essential copy.
 - Maintain visible keyboard focus. The composer focus ring is the model.
 - Keyboard shortcuts: ⌘N new session, ⌘O open project, ⌘K command palette,
-  ⇧⌘I inspector, ⇧⌘E Extensions & Mods, ⌘. stop.
+  ⇧⌘I inspector, ⇧⌘E Extensions & Mods, ⇧⌘R review changes, ⇧⌘F find in
+  conversations, ⌘. stop.
 - Hit targets stay at least 28 pt for icon buttons.
 - Test both appearances and, for anything that moves, Reduce Motion.
 

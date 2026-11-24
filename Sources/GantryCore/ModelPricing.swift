@@ -181,7 +181,9 @@ public enum ModelPricingTable {
         return nil
     }
 
-    private static func normalized(_ model: String) -> String {
+    /// Shared with `ModelContextWindow` so pricing and context-window lookups
+    /// agree on model families.
+    static func normalized(_ model: String) -> String {
         var name = model.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         // Strip provider prefixes such as "anthropic.", "us.anthropic.", or
         // "openrouter/anthropic/".

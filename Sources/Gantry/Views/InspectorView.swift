@@ -177,6 +177,13 @@ struct InspectorView: View {
                 SectionLabel(title: "Edited files")
                 Spacer()
                 if !session.changedFilePaths.isEmpty {
+                    Button("Review") {
+                        app.reviewRequested = true
+                    }
+                    .buttonStyle(.plain)
+                    .font(Typo.micro)
+                    .foregroundStyle(Palette.accent)
+                    .help("Review these changes and commit them")
                     Text("\(session.changedFilePaths.count)")
                         .font(Typo.micro)
                         .foregroundStyle(Palette.tertiaryInk)

@@ -133,7 +133,7 @@ so pipe callbacks never mutate shared state concurrently.
 | `status` / `retry` | Status text such as Thinking or Reconnecting |
 | `streamText` / `streamThinking` | Appended to a preview buffer; flushed at most every 32 ms (about 30 fps) |
 | `streamToolStart` | Flushes the preview and shows the tool name |
-| `assistant` | Merges text, thinking, and tool-use blocks into the streaming turn; duplicate blocks are suppressed by signature |
+| `assistant` | Merges text, thinking, and tool-use blocks into the streaming turn; duplicate blocks are suppressed by signature, and its reported usage updates the composer's context meter |
 | `toolResults` | Attaches results to the matching tool; result text is capped at 250,000 characters |
 | `permissionRequest` | Adds a permission or question card and marks the tool as awaiting permission |
 | `permissionCancelled` | Removes the card |
@@ -143,6 +143,14 @@ so pipe callbacks never mutate shared state concurrently.
 
 Preview buffers are flushed immediately on tool start, permission requests,
 and turn completion, so the UI never lags behind a boundary event.
+
+### Composer attachments
+
+The composer stages files and folders per session as `PromptAttachment` values.
+Gantry does not read or copy their contents. On send, `PromptAttachmentComposer`
+appends their absolute paths to the user's text as a short context block, and
+the result goes to Claude as a normal user turn. Claude reads the paths with its
+own tools, so its permission rules and instruction-file limits still apply.
 
 ### Permission flow
 
@@ -194,6 +202,48 @@ interrupted.
 A process exit without a result ends the turn with an error and a truncated
 stderr tail. If no turn is active, the session returns to idle with a banner.
 
+## Review and commit
+
+`SessionReview` builds the **Review changes** sheet from the session transcript,
+not from Git. It walks every turn and collects the input of completed `Edit`,
+`MultiEdit`, `Write`, and `NotebookEdit` tool calls, grouping them by
+standardized file path. Changes made by shell commands or other tools are not in
+the transcript and are not listed. A `Write` replacement uses the original file
+Claude Code reports in the tool result; when that is absent, only the written
+content is shown.
+
+Notes are a normal user turn: **Send notes** calls `AppModel.send` with the
+file notes and the overall note, so the permission flow and running-turn rules
+are unchanged.
+
+**Commit…** is user-initiated and confirmed in a sheet that lists every file and
+the commit message. `GitCommitService` resolves reviewed paths against the
+project root, drops paths outside it, and runs
+`git --literal-pathspecs add -- <paths>` followed by
+`git --literal-pathspecs commit -m <message> -- <paths>` without a shell. The
+pathspec keeps unrelated staged work out of the commit, and the literal mode
+keeps file names with glob characters safe. It never pushes, amends,
+force-updates, or passes `--no-verify` / `--no-gpg-sign`, so hooks and signing
+behave as they do in a terminal. Git output is captured to temporary files,
+stripped of ANSI, and shown in the sheet on failure.
+
+## Background operation and menu bar
+
+`AppModel` is owned by the app, not by the main window. Closing the window
+hides the app and does not quit: Claude Code child processes, plugin bridges,
+turns, and their pending permission requests keep running. `AppDelegate` holds
+a reference to the model (set when the root view or menu bar label appears) so
+`applicationWillTerminate` can call `shutdown()` and save even when no window is
+open. The main window is reopened with SwiftUI's `openWindow`, from the menu bar
+or the Dock reopen handler.
+
+The menu bar extra is a projection of the same state: `pendingPermissionItems`,
+`activeSessionItems`, and `finishedSessionItems` gather sessions across every
+project. Its actions call the same `respond`, `answer`, and `declineQuestion`
+paths as the in-window cards, so permission handling stays single-sourced and
+there is still no auto-approval. A turn that finishes while the main window is
+not focused marks its session unread so it can appear under Finished.
+
 ## Persistence
 
 `AppDataStore` writes `~/Library/Application Support/Gantry/state.json` with
@@ -209,8 +259,9 @@ mode `0600`.
 
 `AppSnapshot` is version 2 and contains projects, sessions, turns, tools, and
 settings. Persisted additions must decode with defaults when absent; examples
-include `ChatSession.modelUsage`, `Project.pluginID`, `Project.devModPath`,
-`AppSettings.appearance`, `AppSettings.plugins`, `AppSettings.providers`,
+include `ChatSession.modelUsage`, `ChatSession.contextTokens`,
+`Project.pluginID`, `Project.devModPath`, `AppSettings.appearance`,
+`AppSettings.plugins`, `AppSettings.providers`,
 `AppSettings.favoriteMarketplaces`, and `AppSettings.modsDirectory`. State
 written by 0.1.0 must keep decoding.
 
@@ -385,6 +436,16 @@ project commands and dev mods depend on the working directory.
 locally so Gantry's session identity and title stay in sync. Every other slash
 command is sent to Claude Code unchanged.
 
+## Conversation search
+
+`SessionSearch` runs in memory over the persisted models; it has no index file
+and makes no network calls. It matches session titles, user and assistant text
+blocks, and tool commands or file paths. It skips thinking blocks and tool
+output, and returns the best hit per turn. The search sheet debounces typing,
+runs the search off the main actor, and highlights the matched range. Selecting
+a turn sets `AppModel.pendingTurnScroll` with both the session and turn IDs, so
+a workspace that is being replaced ignores a request for another session.
+
 ## Cost estimation
 
 Claude Code reports cumulative per-model usage on each result. Gantry stores
@@ -432,10 +493,10 @@ These values are estimates, not billing data.
 ## Known limits
 
 The README's **Current limits** section is the canonical list. Architecturally
-important ones: single window, provider switching only between turns,
-user-scope extension management only, no inline review threads or merges, no
-file attachments, and terminal-only slash commands that have no visual effect
-in Gantry.
+important ones: one main window plus a menu bar extra, provider switching only
+between turns, user-scope extension management only, no inline review threads
+or merges, and terminal-only slash commands that have no visual effect in
+Gantry.
 
 ## Related documents
 

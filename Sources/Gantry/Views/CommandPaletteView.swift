@@ -202,6 +202,17 @@ struct CommandPaletteView: View {
                 action: { dismissAnd { app.chooseProjectFolder() } }
             ),
             PaletteEntry(
+                id: "action.find",
+                kind: .action,
+                title: "Find in Conversations",
+                subtitle: "Search every project and session",
+                icon: "magnifyingglass",
+                tint: Palette.info,
+                hint: "⇧⌘F",
+                searchText: "find search conversations messages transcripts history",
+                action: { dismissAnd { app.searchRequested = true } }
+            ),
+            PaletteEntry(
                 id: "action.inspector",
                 kind: .action,
                 title: "Toggle Inspector",
@@ -282,6 +293,26 @@ struct CommandPaletteView: View {
                 action: { dismissAnd { app.resolveClaude() } }
             )
         ])
+
+        if let selectedSession = app.selectedSession,
+           !selectedSession.changedFilePaths.isEmpty {
+            items.append(PaletteEntry(
+                id: "action.review",
+                kind: .action,
+                title: "Review Changes",
+                subtitle: "Review Claude's file edits, leave notes, and commit",
+                icon: "text.badge.checkmark",
+                tint: Palette.accent,
+                hint: "⇧⌘R",
+                searchText: "review changes diff files notes commit ship",
+                action: {
+                    dismissAnd {
+                        app.mainDestination = .workspace
+                        app.reviewRequested = true
+                    }
+                }
+            ))
+        }
 
         let matchingActions = items.filter { entry in
             trimmed.isEmpty

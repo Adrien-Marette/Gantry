@@ -617,7 +617,30 @@ extension AppModel {
             modelChanged = false
         }
 
-        guard addedAnything || modelChanged else { return }
+        // Each assistant response reports the prompt that produced it. The
+        // newest one is the best snapshot of how full the context window is.
+        let contextChanged: Bool
+        if let usage = message.usage,
+           usage.contextTokens > 0,
+           usage.contextTokens != session.contextTokens {
+            session.contextTokens = usage.contextTokens
+            if let model = message.model,
+               !model.isEmpty,
+               model != "<synthetic>" {
+                // Keep a resolved name such as `deepseek-flash[1m]` from a
+                // previous result; assistant events report the unresolved id.
+                if session.contextModelName == nil || model.contains("[1m]") {
+                    session.contextModelName = model
+                }
+            } else if session.contextModelName == nil {
+                session.contextModelName = session.actualModelName
+            }
+            contextChanged = true
+        } else {
+            contextChanged = false
+        }
+
+        guard addedAnything || modelChanged || contextChanged else { return }
         if addedAnything {
             session.turns[turnIndex] = turn
         }
@@ -812,6 +835,12 @@ extension AppModel {
                !reportedModel.isEmpty {
                 session.actualModelName = reportedModel
             }
+            // `modelUsage` keys carry Claude Code's resolved name, including a
+            // `[1m]` marker. Prefer it so the context meter can size the window
+            // accurately instead of guessing from the requested alias.
+            if let reportedModel = usage.modelName, !reportedModel.isEmpty {
+                session.contextModelName = reportedModel
+            }
             // A result without a cumulative snapshot must not keep a stale
             // baseline: the next cumulative report would otherwise price the
             // turns in between a second time.
@@ -853,7 +882,11 @@ extension AppModel {
     }
 
     private func toastCompletionIfNeeded(sessionID: UUID, hadError: Bool) {
-        guard selectedSessionID != sessionID, !hadError else { return }
+        guard !hadError else { return }
+        // The menu bar is the only status surface when the window is closed,
+        // so mark finishes as unread unless the person is looking at that
+        // session in the key main window.
+        guard !(isMainWindowFocused && selectedSessionID == sessionID) else { return }
         activities[sessionID]?.unread = true
     }
 

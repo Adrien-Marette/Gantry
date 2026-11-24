@@ -59,6 +59,12 @@ struct StreamPreview: Hashable, Sendable {
     }
 }
 
+/// A request to reveal one turn after a search result selects its session.
+struct PendingTurnScroll: Equatable {
+    var sessionID: UUID
+    var turnID: UUID
+}
+
 enum ClaudeAvailability: Equatable {
     case checking
     case ready(path: String, version: String?)
@@ -81,10 +87,31 @@ enum MainDestination: Hashable {
     case extensions
 }
 
+/// One pending permission or question, paired with its session for the menu
+/// bar and any other global surface.
+struct PendingPermissionItem: Identifiable {
+    var project: Project
+    var session: ChatSession
+    var request: ClaudePermissionRequest
+
+    var id: String {
+        "\(session.id.uuidString)-\(request.requestID)"
+    }
+}
+
+/// A session with live activity state, used by the menu bar.
+struct SessionActivityItem: Identifiable {
+    var project: Project
+    var session: ChatSession
+    var activity: SessionActivity
+
+    var id: UUID { session.id }
+}
+
 @MainActor
 @Observable
 final class AppModel {
-    static let appVersion = "0.3.5"
+    static let appVersion = "0.4.0"
 
     var projects: [Project]
     var selectedProjectID: UUID?
@@ -94,12 +121,18 @@ final class AppModel {
     var claudeAvailability: ClaudeAvailability = .checking
     var loadError: String?
     var commandPalettePresented = false
+    var reviewRequested = false
+    var searchRequested = false
+    var pendingTurnScroll: PendingTurnScroll?
     var mainDestination: MainDestination = .workspace
     var searchText = ""
     var isAppTerminating = false
     var showInspector: Bool
     var renamingSessionID: UUID?
     var drafts: [UUID: String] = [:]
+    /// Files and folders staged for the next prompt, per session. Transient,
+    /// like drafts; attachments are prompt context, not persisted state.
+    var attachments: [UUID: [PromptAttachment]] = [:]
     var providers: [AIProvider]
     var defaultProviderID: UUID
     var plugins: [PluginConnection]
@@ -322,6 +355,12 @@ final class AppModel {
         return activities[selectedSessionID]
     }
 
+    /// True when the person is looking at the main window, so a turn that
+    /// finishes in the selected session does not need an unread marker.
+    var isMainWindowFocused: Bool {
+        NSApp.isActive && NSApp.keyWindow?.title == "Gantry"
+    }
+
     var selectedProjectLocation: (projectIndex: Int, sessionIndex: Int)? {
         guard let selectedSessionID else { return nil }
         for (projectIndex, project) in projects.enumerated() {
@@ -330,6 +369,73 @@ final class AppModel {
             }
         }
         return nil
+    }
+
+    /// Pending permission and question requests across every session, newest
+    /// session first. The menu bar uses this when the main window is closed.
+    var pendingPermissionItems: [PendingPermissionItem] {
+        projects.flatMap { project in
+            project.sessions.flatMap { session in
+                (activities[session.id]?.pendingPermissions ?? []).map { request in
+                    PendingPermissionItem(
+                        project: project,
+                        session: session,
+                        request: request
+                    )
+                }
+            }
+        }
+        .sorted { $0.session.updatedAt > $1.session.updatedAt }
+    }
+
+    var pendingPermissionCount: Int {
+        pendingPermissionItems.count
+    }
+
+    var activeSessionItems: [SessionActivityItem] {
+        projects.flatMap { project in
+            project.sessions.compactMap { session in
+                guard let activity = activities[session.id],
+                      activity.isRunning,
+                      activity.pendingPermissions.isEmpty else {
+                    return nil
+                }
+                return SessionActivityItem(
+                    project: project,
+                    session: session,
+                    activity: activity
+                )
+            }
+        }
+        .sorted { $0.session.updatedAt > $1.session.updatedAt }
+    }
+
+    var runningSessionCount: Int {
+        activeSessionItems.count
+    }
+
+    /// Sessions that finished while you were elsewhere. Limited by the caller.
+    var finishedSessionItems: [SessionActivityItem] {
+        projects.flatMap { project in
+            project.sessions.compactMap { session in
+                guard let activity = activities[session.id],
+                      activity.unread,
+                      !activity.isRunning,
+                      activity.pendingPermissions.isEmpty else {
+                    return nil
+                }
+                return SessionActivityItem(
+                    project: project,
+                    session: session,
+                    activity: activity
+                )
+            }
+        }
+        .sorted { $0.session.updatedAt > $1.session.updatedAt }
+    }
+
+    var finishedSessionCount: Int {
+        finishedSessionItems.count
     }
 
     func activity(for sessionID: UUID) -> SessionActivity {
@@ -674,6 +780,11 @@ struct AppCommands: Commands {
         }
 
         CommandGroup(after: .sidebar) {
+            Button("Open Gantry") {
+                NotificationCenter.default.post(name: .gantryShowMainWindow, object: nil)
+            }
+            .keyboardShortcut("0", modifiers: .command)
+
             Button("Command Palette…") {
                 app.commandPalettePresented = true
             }
@@ -684,6 +795,18 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("i", modifiers: [.command, .shift])
             .disabled(app.selectedSessionID == nil)
+
+            Button("Review Changes…") {
+                app.mainDestination = .workspace
+                app.reviewRequested = true
+            }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
+            .disabled(app.selectedSession?.changedFilePaths.isEmpty ?? true)
+
+            Button("Find in Conversations…") {
+                app.searchRequested = true
+            }
+            .keyboardShortcut("f", modifiers: [.command, .shift])
 
             Button("Extensions & Mods") {
                 app.showExtensions()

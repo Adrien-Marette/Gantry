@@ -23,6 +23,22 @@ import Testing
     #expect(input["command"]?.stringValue == "ls -la")
 }
 
+@Test func parsesAssistantContextUsage() throws {
+    let line = """
+    {"type":"assistant","message":{"id":"msg_1","role":"assistant","model":"claude-sonnet-5-5","content":[{"type":"text","text":"Done"}],"usage":{"input_tokens":12,"cache_read_input_tokens":3000,"cache_creation_input_tokens":400,"output_tokens":50}},"parent_tool_use_id":null,"session_id":"s1"}
+    """
+    let events = ClaudeStreamParser.parse(line: line)
+    guard case .assistant(let message) = events.first, let usage = message.usage else {
+        Issue.record("Expected an assistant event with usage")
+        return
+    }
+    #expect(usage.inputTokens == 12)
+    #expect(usage.cacheReadTokens == 3000)
+    #expect(usage.cacheCreationTokens == 400)
+    #expect(usage.outputTokens == 50)
+    #expect(usage.contextTokens == 3412)
+}
+
 @Test func parsesStreamingTextDelta() {
     let line = """
     {"type":"stream_event","event":{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Hello"}},"parent_tool_use_id":null,"session_id":"s1"}

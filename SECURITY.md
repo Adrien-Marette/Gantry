@@ -108,6 +108,33 @@ rules still apply in every mode.
 the user must fill, sends only what the user submitted, and always offers an
 explicit decline. It never synthesizes or preselects an answer.
 
+The menu bar popover exposes the same allow, always-allow, deny, answer, and
+decline actions for the same requests. They are still explicit user actions:
+closing the window does not auto-approve anything, and every request continues
+to wait for the person. Background turns that hit a permission request remain
+paused until answered.
+
+### Prompt attachments
+
+Files and folders attached in the composer are sent to Claude as absolute paths
+inside the user's prompt. Gantry does not read, copy, upload, or log their
+contents. Claude still needs its own Read permission for each path, so the
+permission cards and deny path remain authoritative.
+
+### Review and commit
+
+The Review changes sheet is read-only until you act. **Send notes** is a normal
+user message and goes through Claude Code's permission model. **Commit…** is
+explicit, lists every file and the message before running, and never happens
+automatically.
+
+- Only paths inside the project are committed; paths outside it are shown as
+  excluded and never passed to Git.
+- The commit uses a pathspec, so unrelated staged work is left out.
+- Gantry never pushes, amends, force-updates, or bypasses hooks or signing
+  (`--no-verify` and `--no-gpg-sign` are never passed).
+- Git output is stripped of ANSI before it is shown.
+
 ### Extensions and mods
 
 Extensions are third-party code. Installing one always requires a trust review

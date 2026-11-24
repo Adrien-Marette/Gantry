@@ -6,6 +6,8 @@ struct RootView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.scenePhase) private var scenePhase
 
+    @State private var showingSearch = false
+
     var body: some View {
         ZStack {
             CanvasBackground()
@@ -52,6 +54,15 @@ struct RootView: View {
                 }
             }
         }
+        .sheet(isPresented: $showingSearch) {
+            SessionSearchSheet()
+        }
+        .onAppear {
+            consumeSearchRequest()
+        }
+        .onChange(of: app.searchRequested) { _, _ in
+            consumeSearchRequest()
+        }
         .task {
             app.start()
         }
@@ -66,6 +77,13 @@ struct RootView: View {
                 app.saveNow()
             }
         }
+    }
+
+    private func consumeSearchRequest() {
+        guard app.searchRequested else { return }
+        app.searchRequested = false
+        app.commandPalettePresented = false
+        showingSearch = true
     }
 
     @ViewBuilder
@@ -175,6 +193,48 @@ struct WindowConfigurator: NSViewRepresentable {
             window.tabbingMode = .disallowed
             window.sharingType = .readOnly
             window.collectionBehavior.insert(.fullScreenPrimary)
+        }
+    }
+}
+
+/// A native drag region for the hidden title bar.
+///
+/// SwiftUI's `windowBackgroundDragBehavior` and `WindowDragGesture` can hand
+/// AppKit a gesture event instead of the original mouse-down, which makes the
+/// Window Server log "Window move completed without beginning". AppKit's
+/// documented contract is to call `performDrag(with:)` synchronously from the
+/// mouse-down handler with that original event.
+struct WindowDragSurface: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        DragView()
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class DragView: NSView {
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+            true
+        }
+
+        override func mouseDown(with event: NSEvent) {
+            if event.clickCount > 1 {
+                performTitlebarDoubleClickAction()
+                return
+            }
+            window?.performDrag(with: event)
+        }
+
+        /// Mirrors the system preference for double-clicking a title bar.
+        private func performTitlebarDoubleClickAction() {
+            guard let window else { return }
+            switch UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick") {
+            case "Minimize":
+                window.miniaturize(nil)
+            case "None":
+                break
+            default:
+                window.zoom(nil)
+            }
         }
     }
 }

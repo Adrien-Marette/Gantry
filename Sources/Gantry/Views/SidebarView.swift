@@ -23,6 +23,7 @@ struct SidebarView: View {
 
             VStack(spacing: 0) {
                 topContent
+                    .background(WindowDragSurface())
                 projectList
             }
             .safeAreaInset(edge: .bottom, spacing: 0) { footer }
@@ -116,7 +117,7 @@ struct SidebarView: View {
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Palette.tertiaryInk)
 
-            TextField("Search", text: Binding(
+            TextField("Search sessions", text: Binding(
                 get: { app.searchText },
                 set: { app.searchText = $0 }
             ))
@@ -124,6 +125,7 @@ struct SidebarView: View {
             .font(.system(size: 12))
             .foregroundStyle(Palette.ink)
             .focused($searchFocused)
+            .help("Filter the sidebar. Use ⇧⌘F to search inside all conversations.")
 
             if !app.searchText.isEmpty {
                 Button {

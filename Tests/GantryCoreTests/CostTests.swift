@@ -201,3 +201,29 @@ private func utcDate(_ year: Int, _ month: Int, _ day: Int, _ hour: Int) -> Date
     // The dominant model is the one reported for the session.
     #expect(result.usage.modelName == "deepseek-chat")
 }
+
+@Test func contextWindowFollowsModelFamily() {
+    // Claude Code marks a resolved 1M model with `[1m]` in modelUsage keys.
+    #expect(ModelContextWindow.limit(for: "deepseek-flash[1m]") == 1_000_000)
+    #expect(ModelContextWindow.limit(for: "claude-sonnet-4-5-20250929[1m]") == 1_000_000)
+    #expect(ModelContextWindow.limit(for: "claude-sonnet-5-5") == 1_000_000)
+    #expect(ModelContextWindow.limit(for: "anthropic/claude-opus-5-5") == 1_000_000)
+    // Standard-window generations stay at 200K without the marker.
+    #expect(ModelContextWindow.limit(for: "claude-haiku-4-5-20251001") == 200_000)
+    #expect(ModelContextWindow.limit(for: "claude-sonnet-4-5") == 200_000)
+    #expect(ModelContextWindow.limit(for: "claude-opus-4-5") == 200_000)
+    #expect(ModelContextWindow.limit(for: "claude-opus-4") == 200_000)
+    #expect(ModelContextWindow.limit(for: "claude-sonnet-4") == 200_000)
+    // Later generations have 1M by default.
+    #expect(ModelContextWindow.limit(for: "claude-opus-4-6") == 1_000_000)
+    #expect(ModelContextWindow.limit(for: "gateway-main") == ModelContextWindow.fallback)
+    #expect(ModelContextWindow.limit(for: nil) == ModelContextWindow.fallback)
+}
+
+@Test func contextFractionIsClampedForTheMeter() {
+    let fraction = ModelContextWindow.fraction(tokens: 169_718, model: "deepseek-flash[1m]")
+    #expect(abs(fraction - 0.169_718) < 0.000_001)
+    #expect(ModelContextWindow.fraction(tokens: 100_000, model: "claude-haiku-4-5") == 0.5)
+    #expect(ModelContextWindow.fraction(tokens: 0, model: "claude-sonnet-5-5") == 0)
+    #expect(ModelContextWindow.fraction(tokens: 2_000_000, model: "claude-sonnet-5-5") == 1)
+}

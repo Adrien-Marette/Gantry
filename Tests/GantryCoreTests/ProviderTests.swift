@@ -98,6 +98,8 @@ import Testing
     #expect(session.providerID == nil)
     #expect(session.modelUsage == nil)
     #expect(session.claudeReportedCostUSD == nil)
+    #expect(session.contextTokens == nil)
+    #expect(session.contextModelName == nil)
     #expect(session.title == "Old session")
 }
 

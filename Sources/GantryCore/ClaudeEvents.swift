@@ -36,22 +36,51 @@ public enum AssistantContent: Hashable, Sendable {
     case toolUse(id: String, name: String, input: JSONValue, displayName: String?)
 }
 
+/// Token counts reported by Claude Code for one assistant response. The prompt
+/// side — uncached input plus cache reads and writes — is the number that
+/// counts against the model's context window.
+public struct ClaudeMessageUsage: Hashable, Sendable {
+    public var inputTokens: Int
+    public var outputTokens: Int
+    public var cacheReadTokens: Int
+    public var cacheCreationTokens: Int
+
+    public init(
+        inputTokens: Int = 0,
+        outputTokens: Int = 0,
+        cacheReadTokens: Int = 0,
+        cacheCreationTokens: Int = 0
+    ) {
+        self.inputTokens = inputTokens
+        self.outputTokens = outputTokens
+        self.cacheReadTokens = cacheReadTokens
+        self.cacheCreationTokens = cacheCreationTokens
+    }
+
+    public var contextTokens: Int {
+        inputTokens + cacheReadTokens + cacheCreationTokens
+    }
+}
+
 public struct ClaudeAssistantMessage: Hashable, Sendable {
     public var apiMessageID: String?
     public var model: String?
     public var parentToolUseID: String?
     public var content: [AssistantContent]
+    public var usage: ClaudeMessageUsage?
 
     public init(
         apiMessageID: String? = nil,
         model: String? = nil,
         parentToolUseID: String? = nil,
-        content: [AssistantContent] = []
+        content: [AssistantContent] = [],
+        usage: ClaudeMessageUsage? = nil
     ) {
         self.apiMessageID = apiMessageID
         self.model = model
         self.parentToolUseID = parentToolUseID
         self.content = content
+        self.usage = usage
     }
 }
 
@@ -328,8 +357,21 @@ public enum ClaudeStreamParser {
             apiMessageID: message["id"]?.stringValue,
             model: message["model"]?.stringValue,
             parentToolUseID: nullString(object["parent_tool_use_id"]),
-            content: blocks
+            content: blocks,
+            usage: parseAssistantUsage(message["usage"]?.objectValue)
         ))]
+    }
+
+    private static func parseAssistantUsage(
+        _ object: [String: JSONValue]?
+    ) -> ClaudeMessageUsage? {
+        guard let object else { return nil }
+        return ClaudeMessageUsage(
+            inputTokens: Int(object["input_tokens"]?.numberValue ?? 0),
+            outputTokens: Int(object["output_tokens"]?.numberValue ?? 0),
+            cacheReadTokens: Int(object["cache_read_input_tokens"]?.numberValue ?? 0),
+            cacheCreationTokens: Int(object["cache_creation_input_tokens"]?.numberValue ?? 0)
+        )
     }
 
     private static func parseUser(_ object: [String: JSONValue]) -> [ClaudeEvent] {

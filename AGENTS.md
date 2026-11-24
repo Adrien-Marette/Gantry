@@ -94,6 +94,10 @@ These are non-negotiable unless the user explicitly asks to change the design.
   cards (or question cards for `AskUserQuestion`) and get a `control_response`
   with allow or deny. Never add an auto-approval path, synthesize an answer, or
   bypass Claude Code's authority.
+- **The app outlives its window**: `AppModel` is app-scoped. Closing the main
+  window hides the app and must not stop runtimes; the menu bar extra exposes
+  the same pending permissions and questions. Its actions call the same
+  `AppModel` response paths and never auto-approve anything.
 - **Provider switching** injects env vars and credentials into that child
   process only, between turns. It must not persist secrets. Keys are read from
   the Keychain at launch.
@@ -117,7 +121,8 @@ These are non-negotiable unless the user explicitly asks to change the design.
 
 Read `DESIGN.md` before changing a surface. The short version:
 
-- Target macOS 26 Liquid Glass APIs; it is a single-window app.
+- Target macOS 26 Liquid Glass APIs; it is one main window plus a menu bar
+  extra.
 - Use Apple's real Liquid Glass (`glassEffect`, `GlassEffectContainer`,
   `.buttonStyle(.glass)`, `.glassProminent`) for the sidebar and the floating
   layer: composer, permission cards, palette, menus, and notices. Never paint a

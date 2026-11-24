@@ -14,6 +14,7 @@ struct ChatWorkspaceView: View {
     @State private var branch: String?
     @State private var providerHasKey: Bool?
     @State private var showingRepository = false
+    @State private var showingReview = false
     @Namespace private var dockNamespace
 
     private var activity: SessionActivity? {
@@ -36,6 +37,10 @@ struct ChatWorkspaceView: View {
         !provider.requiresAPIKey || providerHasKey != false
     }
 
+    private var hasReviewableChanges: Bool {
+        !session.changedFilePaths.isEmpty
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             topBar
@@ -51,6 +56,25 @@ struct ChatWorkspaceView: View {
         .sheet(isPresented: $showingRepository) {
             RepositoryPluginSheet(app: app, project: project)
         }
+        .sheet(isPresented: $showingReview) {
+            ReviewChangesSheet(
+                session: session,
+                project: project,
+                activity: activity
+            )
+        }
+        .onAppear {
+            consumeReviewRequest()
+        }
+        .onChange(of: app.reviewRequested) { _, _ in
+            consumeReviewRequest()
+        }
+    }
+
+    private func consumeReviewRequest() {
+        guard app.reviewRequested else { return }
+        app.reviewRequested = false
+        showingReview = true
     }
 
     private var providerStatusTaskID: String {
@@ -115,6 +139,18 @@ struct ChatWorkspaceView: View {
             providerMenu
 
             IconButton(
+                systemName: "text.badge.checkmark",
+                help: hasReviewableChanges
+                    ? "Review changes (⇧⌘R)"
+                    : "No file changes to review",
+                frame: 28
+            ) {
+                app.reviewRequested = true
+            }
+            .disabled(!hasReviewableChanges)
+            .opacity(hasReviewableChanges ? 1 : 0.45)
+
+            IconButton(
                 systemName: "arrow.triangle.branch",
                 help: "Repository, pull requests, and checks",
                 frame: 28
@@ -166,6 +202,7 @@ struct ChatWorkspaceView: View {
         .padding(.leading, 24)
         .padding(.trailing, 20)
         .frame(height: 56)
+        .background(WindowDragSurface())
         .overlay(alignment: .bottom) { Hairline() }
         .animation(.easeOut(duration: 0.16), value: activity?.isRunning)
     }
@@ -259,8 +296,13 @@ struct ChatWorkspaceView: View {
                                     project: project,
                                     isAvailable: app.claudeAvailability.isReady && providerIsReady,
                                     onSuggestion: { prompt in
-                                        if app.send(prompt, in: session.id) {
+                                        let composed = PromptAttachmentComposer.compose(
+                                            text: prompt,
+                                            attachments: app.attachments[session.id] ?? []
+                                        )
+                                        if app.send(composed, in: session.id) {
                                             app.drafts[session.id] = ""
+                                            app.attachments[session.id] = nil
                                         }
                                     }
                                 )
@@ -306,9 +348,14 @@ struct ChatWorkspaceView: View {
                     .onChange(of: dockHeight) { _, _ in
                         if isAtBottom { scrollToBottom(proxy, animated: false) }
                     }
+                    .onChange(of: app.pendingTurnScroll) { _, _ in
+                        scrollToPendingTurn(proxy)
+                    }
                     .onAppear {
                         DispatchQueue.main.async {
-                            proxy.scrollTo("bottom", anchor: .bottom)
+                            if !scrollToPendingTurn(proxy) {
+                                proxy.scrollTo("bottom", anchor: .bottom)
+                            }
                         }
                     }
                 }
@@ -347,6 +394,7 @@ struct ChatWorkspaceView: View {
                 if turn.role == .user {
                     UserTurnView(turn: turn)
                         .padding(.top, turn.id == firstTurnID ? 0 : 32)
+                        .id(turn.id)
                 } else {
                     AssistantTurnView(
                         turn: turn,
@@ -356,6 +404,7 @@ struct ChatWorkspaceView: View {
                         onRetry: { app.retryLastPrompt(sessionID: session.id) }
                     )
                     .padding(.top, turn.id == firstTurnID ? 0 : 16)
+                    .id(turn.id)
                 }
             }
         }
@@ -488,6 +537,21 @@ struct ChatWorkspaceView: View {
                 Palette.danger
             )
         }
+    }
+
+    /// Reveals a turn selected from conversation search. The request carries
+    /// its session so a workspace that is being replaced ignores it.
+    @discardableResult
+    private func scrollToPendingTurn(_ proxy: ScrollViewProxy) -> Bool {
+        guard let request = app.pendingTurnScroll,
+              request.sessionID == session.id else {
+            return false
+        }
+        app.pendingTurnScroll = nil
+        withAnimation(.easeOut(duration: 0.2)) {
+            proxy.scrollTo(request.turnID, anchor: .center)
+        }
+        return true
     }
 
     private func scrollToBottom(_ proxy: ScrollViewProxy, animated: Bool) {

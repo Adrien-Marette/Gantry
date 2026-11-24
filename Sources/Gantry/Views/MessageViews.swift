@@ -278,11 +278,10 @@ struct EditsDetailView: View {
     }
 }
 
-private struct DiffLinesView: View {
+struct DiffLinesView: View {
     var oldText: String?
     var newText: String
-
-    private let maxLines = 140
+    var maxLines: Int = 140
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {

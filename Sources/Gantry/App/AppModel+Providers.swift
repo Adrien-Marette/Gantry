@@ -182,6 +182,7 @@ extension AppModel {
     }
 
     func recycleRuntime(for sessionID: UUID) {
+        runtimeStarts.removeValue(forKey: sessionID)?.cancel()
         runtimeTasks[sessionID]?.cancel()
         runtimeTasks.removeValue(forKey: sessionID)
         runtimes.removeValue(forKey: sessionID)?.terminate()

@@ -14,7 +14,12 @@ final class SessionActivity {
     var pendingPermissions: [ClaudePermissionRequest] = []
     var unread = false
     var banner: String?
-    var availableCommands: [String] = []
+    /// Slash commands reported by this session's Claude Code process. The
+    /// catalog is per session because project and dev-mod commands depend on
+    /// the session's working directory.
+    var slashCommands: [ClaudeSlashCommand] = []
+    var isLoadingSlashCommands = false
+    var slashCommandsError: String?
     var lastStderr: String = ""
 
     var hasPendingPermission: Bool { !pendingPermissions.isEmpty }
@@ -103,6 +108,7 @@ final class AppModel {
 
     @ObservationIgnored let dataStore: AppDataStore
     @ObservationIgnored var runtimes: [UUID: ClaudeRuntime] = [:]
+    @ObservationIgnored var runtimeStarts: [UUID: Task<ClaudeRuntime, Error>] = [:]
     @ObservationIgnored var runtimeTasks: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored var activeTurnIDs: [UUID: UUID] = [:]
     @ObservationIgnored var processedBlockSignatures: [UUID: Set<String>] = [:]
@@ -261,6 +267,8 @@ final class AppModel {
                 persist: false
             )
         }
+        runtimeStarts.values.forEach { $0.cancel() }
+        runtimeStarts.removeAll()
         runtimeTasks.values.forEach { $0.cancel() }
         runtimeTasks.removeAll()
         runtimes.values.forEach { $0.terminate() }
@@ -484,6 +492,7 @@ final class AppModel {
     func deleteSession(_ sessionID: UUID) {
         guard let location = locateSession(sessionID) else { return }
         stop(sessionID: sessionID, silently: true)
+        runtimeStarts.removeValue(forKey: sessionID)?.cancel()
         runtimeTasks[sessionID]?.cancel()
         runtimeTasks.removeValue(forKey: sessionID)
         runtimes.removeValue(forKey: sessionID)?.terminate()
@@ -514,6 +523,7 @@ final class AppModel {
         let sessionIDs = projects[projectIndex].sessions.map(\.id)
         for sessionID in sessionIDs {
             stop(sessionID: sessionID, silently: true)
+            runtimeStarts.removeValue(forKey: sessionID)?.cancel()
             runtimeTasks[sessionID]?.cancel()
             runtimeTasks.removeValue(forKey: sessionID)
             runtimes.removeValue(forKey: sessionID)?.terminate()

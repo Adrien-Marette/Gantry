@@ -424,13 +424,30 @@ struct ChatWorkspaceView: View {
                 }
 
                 if let pendingPermission, let activity {
-                    PermissionRequestCard(
-                        request: pendingPermission,
-                        project: project,
-                        queuedCount: max(0, activity.pendingPermissions.count - 1),
-                        glassNamespace: dockNamespace
-                    ) { action in
-                        app.respond(to: pendingPermission, action: action, sessionID: session.id)
+                    Group {
+                        if let questionnaire = pendingPermission.questionnaire {
+                            QuestionRequestCard(
+                                request: pendingPermission,
+                                questionnaire: questionnaire,
+                                queuedCount: max(0, activity.pendingPermissions.count - 1),
+                                glassNamespace: dockNamespace,
+                                onSubmit: { answers in
+                                    app.answer(pendingPermission, with: answers, sessionID: session.id)
+                                },
+                                onDecline: {
+                                    app.declineQuestion(pendingPermission, sessionID: session.id)
+                                }
+                            )
+                        } else {
+                            PermissionRequestCard(
+                                request: pendingPermission,
+                                project: project,
+                                queuedCount: max(0, activity.pendingPermissions.count - 1),
+                                glassNamespace: dockNamespace
+                            ) { action in
+                                app.respond(to: pendingPermission, action: action, sessionID: session.id)
+                            }
+                        }
                     }
                     .id(pendingPermission.requestID)
                     .transition(.opacity)

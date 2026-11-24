@@ -179,14 +179,23 @@ struct ToolPresentation {
             )
 
         case "AskUserQuestion":
-            let question = input["questions"]?.arrayValue?.first?["question"]?.stringValue
-                ?? "Question for you"
+            let questions = input["questions"]?.arrayValue ?? []
+            let firstQuestion = input["questions"]?[0]?["question"]?.stringValue
+            let title = input["title"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let subtitle: String
+            if let title, !title.isEmpty {
+                subtitle = title
+            } else if questions.count > 1 {
+                subtitle = "\(questions.count) questions"
+            } else {
+                subtitle = Format.truncated(firstQuestion ?? "Question for you", limit: 100)
+            }
             return ToolPresentation(
                 title: "Ask you",
-                subtitle: Format.truncated(question, limit: 100),
+                subtitle: subtitle,
                 icon: "bubble.left.and.bubble.right",
                 tint: Palette.info,
-                detail: .json(input.prettyJSON)
+                detail: result.map { .output($0) } ?? .json(input.prettyJSON)
             )
 
         case "Skill":

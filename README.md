@@ -15,7 +15,9 @@ A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid G
 ## What's new in 0.3.5
 
 - **Redesigned interface.** Warm neutral surfaces, one SF type scale, and a terracotta accent reserved for the selection rail, live work, focus, and the primary action. The sidebar and floating controls use Apple's real Liquid Glass (`glassEffect`, `GlassEffectContainer`, `.glass` buttons); content surfaces stay flat with hairlines.
-- **Command picker scrolling.** Hovering a palette row highlights it without moving the list. Only keyboard navigation scrolls.
+- **Command picker scrolling.** Hovering a slash command or palette row highlights it without moving the list. Only keyboard navigation scrolls.
+- **Slash-command picker.** Type `/` in the composer to search Claude Code's built-in commands, your own and project commands, and commands contributed by installed extensions and mods, with argument hints and descriptions.
+- **`AskUserQuestion` answer sheet.** When Claude asks a structured question, the permission card becomes a step-by-step answer sheet with option buttons, an “Other” field, and text or number inputs.
 
 ## What's new in 0.2.0
 
@@ -32,10 +34,11 @@ A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid G
 ## What it does
 
 - **One persistent Claude Code process per chat.** Each open session speaks the CLI's bidirectional `stream-json` protocol, so replies stream live and follow-up messages stay in the same Claude Code conversation.
-- **Native permission prompts.** Claude Code's `can_use_tool` requests arrive as a focused glass card in the app. Allow once, allow for the session, or deny without ever touching a TUI.
+- **Native permission prompts.** Claude Code's `can_use_tool` requests arrive as a focused glass card in the app. Allow once, allow for the session, or deny without ever touching a TUI. When Claude asks a structured question with `AskUserQuestion`, the card becomes an answer sheet that walks through the questions one at a time with Back/Next and clickable steps: pick one or several options, type an “Other” answer, or fill in text and number fields. Long questions and choices scroll within the card so the navigation and response buttons stay accessible.
 - **AI provider menu.** Add Anthropic-compatible gateways as named providers, then switch the backend for any chat from the provider menu in its header. Existing conversations resume on the new provider. The built-in **Claude Code** provider keeps using your current CLI setup, so your existing DeepSeek configuration remains available without reconfiguring anything.
 - **Code-host plugins.** Connect GitHub, GitLab, or Gitea accounts in **Settings → Code Hosts**, then open the repository panel from any chat. It detects the project's `origin` remote and can list open pull requests, inspect CI checks, post a comment, or create a pull request. When multiple accounts match a host, choose the one for the project. Matching plugins are also exposed to Claude Code as a scoped MCP server.
 - **Extensions & mods.** A top-level page for the Claude Code plugin ecosystem: browse marketplaces, install and manage skills, commands, agents, hooks, MCP bundles, and UI mods, favorite source repositories, and create your own mod. Installed state stays with Claude Code's `claude plugin` CLI, so the same extensions work in the terminal. Installing third-party code always requires a trust review; marketplace-declared install commands need a separate explicit approval and are never auto-accepted. Changes apply to new chats, and running chats restart their Claude process after the current turn.
+- **Slash commands, including extension and mod commands.** Type `/` in the composer to open a filtered list of the session's commands. The menu shows each command's argument hint and description, and labels commands contributed by an extension or mod. Arrow keys navigate; Return completes the highlighted command so you can add arguments. It runs immediately if the typed token exactly matches the highlighted command's name or alias. The catalog is requested from the chat's own Claude Code process, so project commands, installed plugins, and mods loaded with `--plugin-dir` appear without a first prompt. `/clear` starts a new Gantry session and `/rename` updates the displayed title, so the two commands that manage session identity stay in sync with Gantry's own state.
 - **Keys in Apple Passwords.** Provider API keys are written to the macOS Keychain as internet-password items, never to Gantry's session file, logs, or command line. When iCloud Keychain is available, they can sync through Apple Passwords. Keys can be entered, replaced, or removed from **Settings → Providers** and are shown as masked fields only.
 - **Sessions that survive restarts.** Projects, chats, provider choice, model choice, and permission mode are stored locally. The Claude Code session ID is resumed automatically after relaunch.
 - **Real tool activity.** Bash, Read, Write, Edit, Task, web, MCP, and other tool calls appear as compact, inspectable rows. Expanded views show commands, file diffs, output, todos, and structured results.
@@ -90,7 +93,7 @@ Gantry_RUN_KEYCHAIN_TESTS=1 swift test --filter keychainRoundTrip
 
 ```
 Gantry.app
-├── SwiftUI shell        Sidebar, conversation, composer, permission card, inspector
+├── SwiftUI shell        Sidebar, conversation, composer, permission and question cards, inspector
 ├── AppModel             Projects, sessions, providers, plugins, drafts, persistence, permissions
 ├── ClaudeRuntime        One child process per session
 │       └── claude --input-format stream-json --output-format stream-json
@@ -102,7 +105,7 @@ Gantry.app
 1. On the first message, Gantry spawns the `claude` CLI in the project folder with a session UUID.
 2. It writes an `initialize` control request, then the user's prompt as `stream-json`.
 3. CLI output is parsed into system, partial-text, assistant, tool-result, permission, and result events. Partial deltas are coalesced at roughly 30 fps so long answers do not redraw the UI per token.
-4. A permission request pauses Claude Code until the user answers. The app sends a `control_response` with `behavior: allow` or `deny`; “allow for session” forwards Claude Code's own permission suggestions.
+4. A permission or question request pauses Claude Code until the user answers. The app sends a `control_response` with `behavior: allow` or `deny`; “allow for session” forwards Claude Code's own permission suggestions. For `AskUserQuestion`, the allow response carries an `updatedInput.answers` map keyed by question text.
 5. On the next message the same process is reused. After an app restart, Gantry relaunches the CLI with `--resume <session-id>`.
 6. The selected provider's environment — endpoint, model aliases, and credential — is injected into that child process only. Switching providers recycles the process after the current turn and resumes the same Claude Code transcript with the new environment.
 7. If the project's `origin` remote matches a connected code-host plugin, Gantry starts a private per-session Unix-socket bridge and adds the bundled `Gantry-plugins` MCP server to that Claude process. Tool calls are scoped to that repository. The helper receives only the socket path and a random bridge token; the code-host access token stays in the app and is read from the Keychain for each tool call.
@@ -181,6 +184,7 @@ The **Extensions & Mods** page in the sidebar (or `⇧⌘E`) manages the Claude 
 - **Sources** adds marketplace repositories by `owner/repo`, git or HTTPS URL, or local path. Repositories can be favorited and sort first in Browse and Sources. Removing a source does not uninstall plugins already installed from it.
 - **Create** scaffolds a valid mod from a status-line, slash-command, pane, tool-guard, or blank template. It writes `.claude-plugin/plugin.json`, a hooks module, a README, and, when its test option is enabled for a pane, a starter test; runs `claude plugin validate` (and optionally `claude plugin test`); and can open the folder in Gantry, where the project's chats load it with `--plugin-dir`.
 - Installed plugin state belongs to Claude Code's `claude plugin` commands, so extensions installed here also work in the terminal. Gantry stores only favorite marketplace repositories and the last mods folder. After a plugin change, idle Claude processes are recycled and running chats pick up the change after their current turn.
+- Commands contributed by installed plugins and by mods loaded with `--plugin-dir` appear in the composer's `/` picker beside built-in and user commands. The picker's catalog is refreshed when a chat's Claude process restarts after an extension change.
 
 ## Storage and privacy
 
@@ -206,7 +210,8 @@ The **Extensions & Mods** page in the sidebar (or `⇧⌘E`) manages the Claude 
 - The repository panel and MCP tools expose open pull requests, conversation comments, CI checks, and pull-request creation. Inline review threads, merging, and dispatching CI workflows are not included; checks are read-only.
 - Code-host features need an `origin` remote. When several accounts match a host, the selected account is remembered per project.
 - The MCP bridge is scoped to one repository and requires the bundled `Gantry-plugins` helper, which the provided build script includes. It is only active when the chat's Claude Code process starts with a matching plugin; changing code hosts recycles idle runtimes.
-- No file or image attachments, slash-command picker, MCP elicitation UI, or interactive `AskUserQuestion` dialogs. Standard permission prompts are supported.
+- No file or image attachments or MCP elicitation UI. Standard permission prompts and `AskUserQuestion` dialogs are supported.
+- Slash commands whose interface is terminal-only, such as prompt-bar color or focus mode, run through Claude Code but have no visual effect in Gantry. `/clear` starts a new Gantry session and `/rename` changes the session title.
 - Files edited via Bash are not listed in the inspector's edited-files list (only file-editing tools such as Edit, MultiEdit, Write, and NotebookEdit are).
 - Idle Claude Code processes stay alive while the app is open, which keeps follow-ups fast at the cost of memory.
 - If iCloud Keychain sync is unavailable (for example an ad-hoc local build), keys stay in the local login Keychain.
@@ -228,8 +233,10 @@ Sources/GantryCore/
   PluginTools.swift     MCP tool catalog, wire format, and executor
   PluginToolBridge.swift Private Unix-socket bridge for MCP tool calls
   ClaudePluginManager.swift Claude Code plugin/marketplace CLI models and manager
+  SlashCommands.swift   Slash-command catalog parsed from the initialize handshake
   ModScaffolder.swift   Mod templates, name validation, and file generation
   ClaudeEvents.swift    Stream protocol types and JSON line parser
+  ClaudeQuestionnaire.swift AskUserQuestion schema parsing and answers
   ClaudeWire.swift      Outgoing user, control, and permission messages
   ClaudeRuntime.swift   Process lifecycle, stream framing, control handshake, logging
   ClaudeLocator.swift   CLI discovery and launch arguments
@@ -240,7 +247,7 @@ Sources/Gantry/
   App/                  App entry, observable state, providers, plugins, extensions, MCP bridge lifecycle, conversation orchestration
   Design/               Palette, type scale, surface and glass helpers, brand mark, shared controls
   Utilities/            Inline Markdown, syntax highlighting, tool and provider presentation
-  Views/                Welcome, sidebar, conversation, composer, permissions, inspector, settings, provider editor, code-host settings, repository panel, extensions and mods
+  Views/                Welcome, sidebar, conversation, composer, permissions and questions, inspector, settings, provider editor, code-host settings, repository panel, extensions and mods
 Sources/GantryPluginMCP/
   main.swift            Bundled stdio MCP server; forwards tool calls to the app
 Scripts/
@@ -250,7 +257,7 @@ Scripts/
 
 ## Verification
 
-- `swift test` — tests covering protocol parsing/serialization, runtime permission flow with a fake CLI, provider environment injection, model-aware cost estimation, plugin remote parsing and REST fixtures, MCP tool execution and the Unix-socket bridge, Claude Code plugin catalog/command parsing, favorites, mod scaffolding, Markdown, persistence, and 0.1.0 state compatibility.
+- `swift test` — tests covering protocol parsing/serialization, runtime permission flow with a fake CLI, `AskUserQuestion` parsing and answers, provider environment injection, model-aware cost estimation, plugin remote parsing and REST fixtures, MCP tool execution and the Unix-socket bridge, Claude Code plugin catalog/command parsing, slash-command catalog parsing and matching, favorites, mod scaffolding, Markdown, persistence, and 0.1.0 state compatibility.
 - Extension scaffolding can be validated against the real CLI:
   ```sh
   Gantry_RUN_CLI_INTEGRATION=1 swift test --filter modScaffoldCLIValidation
@@ -262,7 +269,7 @@ Scripts/
   Gantry_RUN_KEYCHAIN_TESTS=1 swift test --filter pluginKeychainRoundTrip
   ```
   Each uses and removes a disposable test item.
-- Real Claude Code smoke test passes against the installed CLI.
+- Real Claude Code smoke test and the slash-command catalog handshake pass against the installed CLI.
 - Debug and release app bundles build successfully; UI checked in light and dark appearance on macOS 27.
 
 ## Contributing

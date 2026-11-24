@@ -103,15 +103,10 @@ extension AppModel {
     /// Recycles idle Claude processes and marks running ones stale so the next
     /// turn starts with the current plugin set.
     func pluginEnvironmentDidChange() {
-        for project in projects {
-            for session in project.sessions {
-                if activities[session.id]?.isRunning == true {
-                    staleRuntimeSessions.insert(session.id)
-                } else {
-                    recycleRuntime(for: session.id)
-                }
-            }
-        }
+        invalidateRuntimes()
+        // A new process may expose a different command catalog (including
+        // commands registered by mods), so let the picker reload on next use.
+        clearSlashCommandCatalogs()
         scheduleSave()
     }
 
@@ -132,7 +127,11 @@ extension AppModel {
         guard standardized.path == projectPath else { return sessionID }
 
         projects[location.projectIndex].devModPath = standardized.path
-        recycleRuntime(for: sessionID)
+        // The project may already have other chats open; reload all of them so
+        // they pick up the dev mod, not just the session returned here.
+        let projectID = projects[location.projectIndex].id
+        invalidateRuntimes(projectID: projectID)
+        clearSlashCommandCatalogs(projectID: projectID)
         scheduleSave()
         return sessionID
     }

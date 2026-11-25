@@ -294,7 +294,7 @@ Sources/Gantry/
   App/                  App entry, observable state, providers, plugins, extensions, Graphify install/build state, MCP bridge lifecycle, conversation, review, search, and menu bar state
   Design/               Palette, type scale, surface and glass helpers, brand mark, shared controls
   Utilities/            Inline Markdown, syntax highlighting, tool and provider presentation
-  Views/                Welcome, sidebar, conversation, composer, permissions and questions, inspector, settings, provider editor, code-host settings, repository panel, extensions and mods, Graphify page, conversation search, sub-agent details, review changes, menu bar extra
+  Views/                Welcome, sidebar, conversation, composer, permissions and questions, inspector, settings, provider editor, code-host settings, repository panel, extensions and mods, Graphify page, conversation search, sub-agent details, review changes, menu bar extra, conversation import
 Sources/GantryPluginMCP/
   main.swift            Bundled stdio MCP server; forwards tool calls to the app
 Scripts/

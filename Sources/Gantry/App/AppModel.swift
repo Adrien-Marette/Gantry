@@ -125,6 +125,9 @@ final class AppModel {
     var transcriptImportStatus: (text: String, isWorking: Bool)?
     /// Project whose import picker is open.
     var transcriptImportProjectID: UUID?
+    /// True when the picker opened because a project was opened, the only case
+    /// where remembering the answer makes sense.
+    var transcriptImportOffersRemember = false
     var commandPalettePresented = false
     var reviewRequested = false
     var searchRequested = false

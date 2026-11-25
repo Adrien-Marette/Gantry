@@ -8,6 +8,7 @@ struct TranscriptImportSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let projectID: UUID
+    var offersRemember = false
 
     @State private var sessions: [ChatSession] = []
     @State private var isLoading = true
@@ -40,7 +41,7 @@ struct TranscriptImportSheet: View {
     private var header: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Import Claude Code conversations")
+                Text("Import conversations")
                     .font(Typo.sectionTitle)
                     .foregroundStyle(Palette.ink)
                 Text(projectName)
@@ -199,10 +200,12 @@ struct TranscriptImportSheet: View {
                 .foregroundStyle(Palette.accent)
             }
             Spacer()
-            Toggle("Remember my choice", isOn: $remembersChoice)
-                .toggleStyle(.checkbox)
-                .font(Typo.caption)
-                .help("Import automatically next time, or never ask again if you choose Not Now")
+            if offersRemember {
+                Toggle("Remember my choice", isOn: $remembersChoice)
+                    .toggleStyle(.checkbox)
+                    .font(Typo.caption)
+                    .help("Import automatically next time, or never ask again if you choose Not Now")
+            }
             Button("Not Now") {
                 if remembersChoice { app.setTranscriptImportPreference(.never) }
                 dismiss()

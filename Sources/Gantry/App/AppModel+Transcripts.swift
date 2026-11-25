@@ -7,6 +7,12 @@ extension AppModel {
         scheduleSave()
     }
 
+    /// Opens the picker on request, from the project menu.
+    func showTranscriptImport(for projectID: UUID) {
+        transcriptImportOffersRemember = false
+        transcriptImportProjectID = projectID
+    }
+
     func setAutoSyncTranscripts(_ isOn: Bool, for projectID: UUID) {
         guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return }
         projects[index].autoSyncTranscripts = isOn
@@ -75,6 +81,7 @@ extension AppModel {
         guard !urls.isEmpty else { return }
 
         guard preference == .always else {
+            transcriptImportOffersRemember = true
             transcriptImportProjectID = projectID
             return
         }

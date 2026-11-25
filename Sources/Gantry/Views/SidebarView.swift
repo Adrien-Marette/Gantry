@@ -322,10 +322,10 @@ struct SidebarView: View {
                     Button("Show in Finder") {
                         NSWorkspace.shared.activateFileViewerSelecting([project.url])
                     }
-                    Button("Import Claude Code Conversations…") {
-                        app.transcriptImportProjectID = project.id
+                    Button("Import Conversations…") {
+                        app.showTranscriptImport(for: project.id)
                     }
-                    Toggle("Auto-sync Claude Code Conversations", isOn: Binding(
+                    Toggle("Auto-sync Conversations", isOn: Binding(
                         get: { project.autoSyncTranscripts == true },
                         set: { app.setAutoSyncTranscripts($0, for: project.id) }
                     ))
@@ -359,8 +359,8 @@ struct SidebarView: View {
                 Button("Show in Finder") {
                     NSWorkspace.shared.activateFileViewerSelecting([project.url])
                 }
-                Button("Import Claude Code Conversations…") {
-                    app.transcriptImportProjectID = project.id
+                Button("Import Conversations…") {
+                    app.showTranscriptImport(for: project.id)
                 }
                 Toggle("Auto-sync Claude Code Conversations", isOn: Binding(
                     get: { project.autoSyncTranscripts == true },

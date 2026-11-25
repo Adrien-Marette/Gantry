@@ -68,7 +68,7 @@ struct RootView: View {
             set: { if !$0 { app.transcriptImportProjectID = nil } }
         )) {
             if let projectID = app.transcriptImportProjectID {
-                TranscriptImportSheet(projectID: projectID)
+                TranscriptImportSheet(projectID: projectID, offersRemember: app.transcriptImportOffersRemember)
             }
         }
         .sheet(isPresented: $showingSearch) {

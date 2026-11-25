@@ -307,8 +307,8 @@ extension AppModel {
 
         var extraArguments: [String] = []
         do {
-            if let pluginTools = try preparePluginTools(for: sessionID, project: project) {
-                extraArguments = pluginTools.extraArguments
+            if let sessionTools = try prepareSessionTools(for: sessionID, project: project) {
+                extraArguments = sessionTools.extraArguments
             }
         } catch {
             activities[sessionID]?.banner =

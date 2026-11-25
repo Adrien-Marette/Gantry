@@ -85,6 +85,7 @@ enum ClaudeAvailability: Equatable {
 enum MainDestination: Hashable {
     case workspace
     case extensions
+    case graphify
 }
 
 /// One pending permission or question, paired with its session for the menu

@@ -10,7 +10,6 @@ struct SidebarView: View {
     @State private var hoveredProjectID: UUID?
     @State private var hoveredSessionID: UUID?
     @State private var isHoveringNewSession = false
-    @State private var isHoveringExtensions = false
     @FocusState private var searchFocused: Bool
     @State private var pendingDeleteSession: ChatSession?
     @State private var pendingRemoveProject: Project?
@@ -93,8 +92,25 @@ struct SidebarView: View {
             newSessionButton
                 .padding(.horizontal, 12)
 
-            extensionsButton
-                .padding(.horizontal, 12)
+            SidebarDestinationButton(
+                title: "Extensions & Mods",
+                systemName: "puzzlepiece.extension",
+                isSelected: app.mainDestination == .extensions,
+                help: "Browse, install, and create extensions and mods (⇧⌘E)"
+            ) {
+                app.showExtensions()
+            }
+            .padding(.horizontal, 12)
+
+            SidebarDestinationButton(
+                title: "Graphify",
+                systemName: "network",
+                isSelected: app.mainDestination == .graphify,
+                help: "Build and query a knowledge graph of this project"
+            ) {
+                app.showGraphify()
+            }
+            .padding(.horizontal, 12)
 
             HStack {
                 SectionLabel(title: "Projects")
@@ -177,47 +193,6 @@ struct SidebarView: View {
         .disabled(app.projects.isEmpty)
         .opacity(app.projects.isEmpty ? 0.45 : 1)
         .accessibilityLabel("New session")
-    }
-
-    private var extensionsButton: some View {
-        let isSelected = app.mainDestination == .extensions
-
-        return Button {
-            app.showExtensions()
-        } label: {
-            HStack(spacing: 8) {
-                RoundedRectangle(cornerRadius: 1, style: .continuous)
-                    .fill(Palette.accent)
-                    .frame(width: 2, height: 16)
-                    .opacity(isSelected ? 1 : 0)
-
-                Image(systemName: "puzzlepiece.extension")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(isSelected ? Palette.ink : Palette.tertiaryInk)
-                    .frame(width: 16, height: 16)
-
-                Text("Extensions & Mods")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(isSelected ? Palette.ink : Palette.secondaryInk)
-
-                Spacer()
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
-                    .fill(
-                        isSelected
-                            ? Palette.sidebarSelection
-                            : (isHoveringExtensions ? Palette.sidebarHover : Color.clear)
-                    )
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { isHoveringExtensions = $0 }
-        .help("Browse, install, and create extensions and mods (⇧⌘E)")
-        .accessibilityLabel("Extensions & Mods")
     }
 
     // MARK: - Project list
@@ -579,3 +554,49 @@ struct SidebarView: View {
     }
 }
 
+private struct SidebarDestinationButton: View {
+    var title: String
+    var systemName: String
+    var isSelected: Bool
+    var help: String
+    var action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 1, style: .continuous)
+                    .fill(Palette.accent)
+                    .frame(width: 2, height: 16)
+                    .opacity(isSelected ? 1 : 0)
+
+                Image(systemName: systemName)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(isSelected ? Palette.ink : Palette.tertiaryInk)
+                    .frame(width: 16, height: 16)
+
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(isSelected ? Palette.ink : Palette.secondaryInk)
+
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                    .fill(
+                        isSelected
+                            ? Palette.sidebarSelection
+                            : (isHovering ? Palette.sidebarHover : Color.clear)
+                    )
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
+        .help(help)
+        .accessibilityLabel(title)
+    }
+}

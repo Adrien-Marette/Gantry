@@ -91,6 +91,9 @@ struct RootView: View {
         if app.mainDestination == .extensions {
             ExtensionsView(app: app)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if app.mainDestination == .graphify {
+            GraphifyView(app: app)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let project = app.selectedProject,
            let sessionID = app.selectedSessionID,
            let session = app.session(withID: sessionID) {

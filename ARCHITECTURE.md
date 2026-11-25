@@ -502,7 +502,11 @@ sidechain lines and command echoes are skipped. Each file becomes a
 `ChatSession` whose `claudeSessionID` is the file's UUID with
 `claudeStarted = true`, so the next prompt resumes it with `--resume`. Files
 whose ID already belongs to a Gantry session (including Gantry's own chats)
-are never imported twice. `AppModel.offerTranscriptImport` runs when a project
+are never imported twice. Token usage is summed per API response (deduplicated by
+message ID, since each content block repeats it) and priced with
+`ModelCostEstimator` at the message's date; the last response's prompt size
+seeds the context meter. `modelUsage` stays nil so the first resumed turn is
+priced per turn instead of against a baseline. `AppModel.offerTranscriptImport` runs when a project
 is opened and, for auto-sync projects, at launch. Unless
 `Project.autoSyncTranscripts` imports directly, it opens
 `TranscriptImportSheet` (also in the project menu), which lists the sessions

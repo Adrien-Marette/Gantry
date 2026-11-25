@@ -53,7 +53,7 @@ public enum ClaudeTranscriptImporter {
     ) -> ChatSession? {
         guard let id = UUID(uuidString: url.deletingPathExtension().lastPathComponent),
               let contents = try? String(contentsOf: url, encoding: .utf8) else { return nil }
-        let turns = turns(fromTranscript: contents)
+        let (turns, context) = turns(fromTranscript: contents)
         guard turns.contains(where: { $0.role == .user }) else { return nil }
 
         var session = ChatSession(
@@ -73,13 +73,21 @@ public enum ClaudeTranscriptImporter {
             session.title = "Imported session"
         }
         session.actualModelName = turns.last(where: { $0.role == .assistant })?.usage?.modelName
+        session.totalCostUSD = turns.compactMap(\.usage).reduce(0) { $0 + $1.costUSD }
+        session.contextTokens = context?.tokens
+        session.contextModelName = context?.model
         return session
     }
 
-    static func turns(fromTranscript contents: String) -> [ConversationTurn] {
+    /// Also returns the prompt size of the last API call, which the context meter shows.
+    static func turns(
+        fromTranscript contents: String
+    ) -> (turns: [ConversationTurn], context: (tokens: Int, model: String)?) {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         var turns: [ConversationTurn] = []
+        var counted: Set<String> = []
+        var context: (tokens: Int, model: String)?
 
         for line in contents.split(whereSeparator: \.isNewline) {
             guard let data = line.data(using: .utf8),
@@ -122,17 +130,32 @@ public enum ClaudeTranscriptImporter {
                             )))
                         }
                     }
-                    if let model = message.model, model != "<synthetic>" {
-                        var usage = turns[index].usage ?? TurnUsage()
-                        usage.modelName = model
-                        turns[index].usage = usage
+                    guard let model = message.model, model != "<synthetic>" else { continue }
+                    var usage = turns[index].usage ?? TurnUsage()
+                    usage.modelName = model
+                    // Every content-block line of one API response repeats its usage; count it once.
+                    if let tokens = message.usage,
+                       counted.insert(message.apiMessageID ?? UUID().uuidString).inserted {
+                        let response = TurnUsage(
+                            inputTokens: tokens.inputTokens,
+                            outputTokens: tokens.outputTokens,
+                            cacheReadTokens: tokens.cacheReadTokens,
+                            cacheCreationTokens: tokens.cacheCreationTokens
+                        )
+                        usage.inputTokens += response.inputTokens
+                        usage.outputTokens += response.outputTokens
+                        usage.cacheReadTokens += response.cacheReadTokens
+                        usage.cacheCreationTokens += response.cacheCreationTokens
+                        usage.costUSD += ModelCostEstimator.cost(of: response, model: model, at: createdAt) ?? 0
+                        context = (tokens.contextTokens, model)
                     }
+                    turns[index].usage = usage
                 }
             default:
                 continue
             }
         }
-        return turns.filter(\.hasVisibleContent)
+        return (turns.filter(\.hasVisibleContent), context)
     }
 
     /// A typed prompt is either a plain string or text blocks; tool results are not prompts.

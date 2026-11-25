@@ -19,9 +19,10 @@ import Testing
         #"{"type":"summary","summary":"Ignored"}"#,
         #"{"type":"user","isMeta":true,"timestamp":"2026-01-01T10:00:00.000Z","message":{"role":"user","content":"<local-command-caveat>x</local-command-caveat>"}}"#,
         #"{"type":"user","timestamp":"2026-01-01T10:00:01.000Z","message":{"role":"user","content":"List the files\nplease"}}"#,
-        #"{"type":"assistant","timestamp":"2026-01-01T10:00:02.000Z","message":{"model":"claude-opus-5-5","content":[{"type":"text","text":"Listing."}]}}"#,
-        #"{"type":"assistant","timestamp":"2026-01-01T10:00:03.000Z","message":{"model":"claude-opus-5-5","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"ls"}}]}}"#,
+        #"{"type":"assistant","timestamp":"2026-01-01T10:00:02.000Z","message":{"id":"m1","model":"claude-opus-5-5","usage":{"input_tokens":100,"output_tokens":20,"cache_read_input_tokens":1000,"cache_creation_input_tokens":0},"content":[{"type":"text","text":"Listing."}]}}"#,
+        #"{"type":"assistant","timestamp":"2026-01-01T10:00:03.000Z","message":{"id":"m1","model":"claude-opus-5-5","usage":{"input_tokens":100,"output_tokens":20,"cache_read_input_tokens":1000,"cache_creation_input_tokens":0},"content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"ls"}}]}}"#,
         #"{"type":"user","timestamp":"2026-01-01T10:00:04.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"README.md"}]}}"#,
+        #"{"type":"assistant","timestamp":"2026-01-01T10:00:05.000Z","message":{"id":"m2","model":"claude-opus-5-5","usage":{"input_tokens":5,"output_tokens":10,"cache_read_input_tokens":1200,"cache_creation_input_tokens":0},"content":[{"type":"text","text":"Done."}]}}"#,
         #"{"type":"assistant","isSidechain":true,"message":{"content":[{"type":"text","text":"subagent"}]}}"#,
         "not json",
     ]
@@ -45,11 +46,21 @@ import Testing
     #expect(session.claudeStarted)
     #expect(session.title == "List the files")
     #expect(session.turns.map(\.role) == [.user, .assistant])
-    #expect(session.turns[1].textContent == "Listing.")
+    #expect(session.turns[1].textContent == "Listing.
+
+Done.")
     let tool = try #require(session.turns[1].tools.first)
     #expect(tool.status == .completed)
     #expect(tool.resultText == "README.md")
     #expect(session.actualModelName == "claude-opus-5-5")
+    // m1 is split across two lines and must be counted once.
+    let usage = try #require(session.turns[1].usage)
+    #expect(usage.inputTokens == 105)
+    #expect(usage.outputTokens == 30)
+    #expect(usage.cacheReadTokens == 2200)
+    #expect(usage.costUSD > 0)
+    #expect(session.totalCostUSD == usage.costUSD)
+    #expect(session.contextTokens == 1205)
 }
 
 @Test func defaultsConfigDirectoryAndHonoursOverride() {

@@ -277,7 +277,8 @@ include `ChatSession.modelUsage`, `ChatSession.contextTokens`,
 `ChatSession.contextModelName`, `ChatSession.claudeReportedCostUSD`,
 `Project.pluginID`, `Project.devModPath`, `AppSettings.appearance`,
 `AppSettings.plugins`, `AppSettings.providers`,
-`AppSettings.favoriteMarketplaces`, and `AppSettings.modsDirectory`. State
+`AppSettings.favoriteMarketplaces`, `AppSettings.modsDirectory`, `AppSettings.transcriptImport`, and
+`Project.autoSyncTranscripts`. State
 written by 0.1.0 must keep decoding.
 
 At launch, the app repairs what it can:
@@ -491,6 +492,32 @@ project commands and dev mods depend on the working directory.
 `/clear` (aliases `/reset`, `/new`) and `/rename` (alias `/name`) are handled
 locally so Gantry's session identity and title stay in sync. Every other slash
 command is sent to Claude Code unchanged.
+
+## Transcript import
+
+`ClaudeTranscriptImporter` reads Claude Code's own transcripts from
+`<config>/projects/<path with non-alphanumerics as ->/<session-id>.jsonl`.
+Assistant and tool-result lines go through `ClaudeStreamParser`; meta and
+sidechain lines and command echoes are skipped. Each file becomes a
+`ChatSession` whose `claudeSessionID` is the file's UUID with
+`claudeStarted = true`, so the next prompt resumes it with `--resume`. Files
+whose ID already belongs to a Gantry session (including Gantry's own chats)
+are never imported twice. Token usage is summed per API response (deduplicated by
+message ID, since each content block repeats it) and priced with
+`ModelCostEstimator` at the message's date; the last response's prompt size
+seeds the context meter. `modelUsage` stays nil so the first resumed turn is
+priced per turn instead of against a baseline. `AppModel.offerTranscriptImport` runs when a project
+is opened and, for auto-sync projects, whenever `TranscriptWatcher` (one FSEvents stream on the
+projects folder, 1 s latency to coalesce streaming writes) reports a changed
+transcript in that project's folder.
+Imported sessions that are not running are reloaded whenever their
+transcript's byte size differs from the size last read, so a chat imported mid-conversation catches up. A project's
+`autoSyncTranscripts` imports directly; otherwise
+`AppSettings.transcriptImport` (always, never, or ask) decides, and ask opens
+`TranscriptImportSheet` (also in the project menu), which lists the sessions
+with a read-only preview and imports only the checked ones. Parsing runs off
+the main actor. Import is read-only on Claude Code's
+files.
 
 ## Conversation search
 

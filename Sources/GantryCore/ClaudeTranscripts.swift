@@ -62,6 +62,17 @@ public enum ClaudeTranscriptImporter {
         .sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
 
+    /// The transcript file Claude Code writes for one session.
+    public static func transcriptURL(
+        forProjectPath projectPath: String,
+        sessionID: UUID,
+        projectsDirectory: URL = projectsDirectory()
+    ) -> URL {
+        projectsDirectory
+            .appendingPathComponent(encodedName(forProjectPath: projectPath), isDirectory: true)
+            .appendingPathComponent("\(sessionID.uuidString.lowercased()).jsonl")
+    }
+
     /// Returns nil when the file is unreadable or holds no visible conversation.
     public static func session(
         fromTranscript url: URL,

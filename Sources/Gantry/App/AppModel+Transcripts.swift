@@ -92,10 +92,47 @@ extension AppModel {
         }
     }
 
-    /// Picks up conversations started in the terminal since the last launch.
-    func syncTranscriptsAtLaunch() {
-        for project in projects where project.autoSyncTranscripts == true {
-            offerTranscriptImport(for: project.id)
+    /// Imports new conversations for auto-sync projects now, then keeps polling
+    /// so chats started in the terminal appear while Gantry is open.
+    func startTranscriptAutoSync() {
+        Task { @MainActor in
+            while true {
+                for project in projects where project.autoSyncTranscripts == true {
+                    offerTranscriptImport(for: project.id)
+                    refreshImportedSessions(in: project.id)
+                }
+                // shortcut: polls a folder listing every 10 s; switch to FSEvents if many projects auto-sync.
+                try? await Task.sleep(for: .seconds(10))
+            }
+        }
+    }
+
+    /// A terminal chat imported while it was still going keeps growing on disk;
+    /// reload it when its file is newer. Gantry-born sessions (id equals the
+    /// Claude session ID) and running ones are left alone.
+    func refreshImportedSessions(in projectID: UUID) {
+        guard let project = projects.first(where: { $0.id == projectID }) else { return }
+        for session in project.sessions where session.id != session.claudeSessionID
+            && activities[session.id]?.isRunning != true {
+            let url = ClaudeTranscriptImporter.transcriptURL(
+                forProjectPath: project.path,
+                sessionID: session.claudeSessionID
+            )
+            guard let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?
+                    .contentModificationDate,
+                  // Gantry's own resumed turns also touch the file; the margin skips those.
+                  modified > session.updatedAt.addingTimeInterval(5),
+                  let fresh = ClaudeTranscriptImporter.session(fromTranscript: url) else { continue }
+            mutateSession(session.id) { current in
+                current.turns = fresh.turns
+                current.updatedAt = modified
+                current.totalCostUSD = fresh.totalCostUSD
+                current.contextTokens = fresh.contextTokens
+                current.contextModelName = fresh.contextModelName
+                current.actualModelName = fresh.actualModelName ?? current.actualModelName
+                if !current.hasCustomTitle { current.title = fresh.title }
+            }
+            scheduleSave()
         }
     }
 }

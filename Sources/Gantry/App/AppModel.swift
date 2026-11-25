@@ -292,7 +292,7 @@ final class AppModel {
         guard !started else { return }
         started = true
         resolveClaude()
-        syncTranscriptsAtLaunch()
+        startTranscriptAutoSync()
     }
 
     func shutdown() {

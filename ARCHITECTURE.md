@@ -507,7 +507,11 @@ message ID, since each content block repeats it) and priced with
 `ModelCostEstimator` at the message's date; the last response's prompt size
 seeds the context meter. `modelUsage` stays nil so the first resumed turn is
 priced per turn instead of against a baseline. `AppModel.offerTranscriptImport` runs when a project
-is opened and, for auto-sync projects, at launch. A project's
+is opened and, for auto-sync projects, every 10 seconds while the app runs
+(a folder listing; parsing happens only when a new file appears).
+Imported sessions whose transcript is newer than their `updatedAt` (plus a
+5 s margin for Gantry's own resumed turns) and that are not running are
+reloaded, so a chat imported mid-conversation catches up. A project's
 `autoSyncTranscripts` imports directly; otherwise
 `AppSettings.transcriptImport` (always, never, or ask) decides, and ask opens
 `TranscriptImportSheet` (also in the project menu), which lists the sessions

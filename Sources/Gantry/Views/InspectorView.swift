@@ -9,6 +9,7 @@ struct InspectorView: View {
 
     @State private var branch: String?
     @State private var remote: RepositoryRemote?
+    @State private var selectedSubagent: ToolActivity?
 
     private var activity: SessionActivity? {
         app.activities[session.id]
@@ -25,6 +26,7 @@ struct InspectorView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     sessionSection
                     activitySection
+                    subagentsSection
                     filesSection
                     usageSection
                     footerActions
@@ -39,6 +41,9 @@ struct InspectorView: View {
         .task(id: project.path) {
             branch = GitContext.read(from: project.url).branch
             remote = GitRepositoryReader.originRemote(at: project.url)
+        }
+        .sheet(item: $selectedSubagent) { tool in
+            SubagentDetailSheet(sessionID: session.id, toolID: tool.id)
         }
     }
 
@@ -118,6 +123,81 @@ struct InspectorView: View {
             .padding(.vertical, 3)
             .surfaceCard(radius: Radius.card)
         }
+    }
+
+    @ViewBuilder
+    private var subagentsSection: some View {
+        let tools = session.subagentTools
+        if !tools.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    SectionLabel(title: "Sub-agents")
+                    Spacer()
+                    Text("\(tools.count)")
+                        .font(Typo.micro)
+                        .foregroundStyle(Palette.tertiaryInk)
+                        .monospacedDigit()
+                }
+
+                VStack(spacing: 0) {
+                    ForEach(Array(tools.enumerated()), id: \.element.id) { index, tool in
+                        subagentRow(tool)
+                        if index < tools.count - 1 {
+                            rowDivider
+                        }
+                    }
+                }
+                .padding(.vertical, 3)
+                .surfaceCard(radius: Radius.card)
+            }
+        }
+    }
+
+    private func subagentRow(_ tool: ToolActivity) -> some View {
+        Button {
+            selectedSubagent = tool
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "point.3.connected.trianglepath.dotted")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Palette.info)
+                    .frame(width: 16)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(tool.subagentTypeTitle)
+                        .font(Typo.captionMedium)
+                        .foregroundStyle(Palette.secondaryInk)
+                        .lineLimit(1)
+                    Text(tool.subagentDescription)
+                        .font(Typo.micro)
+                        .foregroundStyle(Palette.tertiaryInk)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+
+                Spacer(minLength: 4)
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    SubagentStatusView(tool: tool)
+                    if let duration = tool.duration,
+                       let text = Format.duration(milliseconds: Int(duration * 1_000)) {
+                        Text(text)
+                            .font(Typo.micro)
+                            .foregroundStyle(Palette.tertiaryInk)
+                    }
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(Palette.tertiaryInk)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Show the prompt and report for this sub-agent")
+        .accessibilityLabel("Sub-agent \(tool.subagentTypeTitle): \(tool.subagentDescription)")
     }
 
     private var activitySection: some View {

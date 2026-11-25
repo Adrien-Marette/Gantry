@@ -85,6 +85,7 @@ enum ClaudeAvailability: Equatable {
 enum MainDestination: Hashable {
     case workspace
     case extensions
+    case graphify
 }
 
 /// One pending permission or question, paired with its session for the menu
@@ -111,7 +112,7 @@ struct SessionActivityItem: Identifiable {
 @MainActor
 @Observable
 final class AppModel {
-    static let appVersion = "0.4.0"
+    static let appVersion = "0.4.1"
 
     var projects: [Project]
     var selectedProjectID: UUID?

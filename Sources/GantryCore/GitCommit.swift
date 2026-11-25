@@ -48,8 +48,8 @@ public enum GitCommitError: LocalizedError, Hashable, Sendable {
     }
 }
 
-/// The files Gantry will commit. Only paths inside the project are included;
-/// files outside it are reported separately instead of being silently skipped.
+/// The files Gantry will commit. Directories and paths outside the project
+/// are reported separately instead of being silently skipped.
 public struct GitCommitPlan: Hashable, Sendable {
     public var paths: [String]
     public var excludedDisplayPaths: [String]
@@ -109,6 +109,13 @@ public struct GitCommitService: Sendable {
                 excluded.append(file.displayPath)
                 continue
             }
+            // A reviewed file that has since become a directory would make a
+            // pathspec commit sweep in unreviewed descendants.
+            let attributes = try? FileManager.default.attributesOfItem(atPath: standardized)
+            if attributes?[.type] as? FileAttributeType == .typeDirectory {
+                excluded.append(file.displayPath)
+                continue
+            }
             let relative = standardized == rootPath
                 ? URL(fileURLWithPath: standardized).lastPathComponent
                 : String(standardized.dropFirst(prefix.count))
@@ -141,10 +148,11 @@ public struct GitCommitService: Sendable {
         let plan = Self.plan(files: files, projectPath: projectURL.path)
         guard !plan.isEmpty else { throw GitCommitError.noFiles }
 
-        // Literal pathspecs keep file names containing glob characters safe
-        // without changing the environment inherited by Git hooks.
+        // Literal pathspec magic keeps filenames containing glob characters
+        // exact without changing global Git behavior for hooks.
+        let literalPaths = plan.paths.map { ":(literal)\($0)" }
         let add = try await runner.runGit(
-            ["--literal-pathspecs", "add", "--"] + plan.paths,
+            ["add", "--"] + literalPaths,
             in: projectURL
         )
         guard add.exitCode == 0 else {
@@ -152,7 +160,7 @@ public struct GitCommitService: Sendable {
         }
 
         let commit = try await runner.runGit(
-            ["--literal-pathspecs", "commit", "-m", trimmedMessage, "--"] + plan.paths,
+            ["commit", "-m", trimmedMessage, "--"] + literalPaths,
             in: projectURL
         )
         guard commit.exitCode == 0 else {

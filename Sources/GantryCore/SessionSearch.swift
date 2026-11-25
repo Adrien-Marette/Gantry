@@ -60,13 +60,13 @@ public enum SessionSearch {
         projects: [Project],
         limit: Int = 80
     ) -> [SessionSearchHit] {
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return [] }
+        let normalized = normalizedQuery(query)
+        guard !normalized.isEmpty else { return [] }
 
         var hits: [SessionSearchHit] = []
         for project in projects {
             for session in project.sessions {
-                if session.title.range(of: trimmed, options: options) != nil {
+                if normalizedQuery(session.title).range(of: normalized, options: options) != nil {
                     hits.append(SessionSearchHit(
                         projectID: project.id,
                         projectName: project.name,
@@ -81,7 +81,7 @@ public enum SessionSearch {
                 }
 
                 for turn in session.turns {
-                    guard let best = bestMatch(in: turn, query: trimmed) else {
+                    guard let best = bestMatch(in: turn, query: normalized) else {
                         continue
                     }
                     hits.append(SessionSearchHit(
@@ -187,6 +187,12 @@ public enum SessionSearch {
         guard collapsed.count > maxLength else { return collapsed }
         let end = collapsed.index(collapsed.startIndex, offsetBy: maxLength)
         return String(collapsed[..<end]).trimmingCharacters(in: .whitespaces) + "…"
+    }
+
+    /// Search and snippets both collapse whitespace, so a query with runs of
+    /// spaces matches the same path or prose as a single space.
+    public static func normalizedQuery(_ query: String) -> String {
+        collapseWhitespace(query.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     static func collapseWhitespace(_ text: String) -> String {

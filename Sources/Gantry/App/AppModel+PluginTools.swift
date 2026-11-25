@@ -1,7 +1,7 @@
 import Foundation
 import GantryCore
 
-struct PreparedPluginTools {
+struct PreparedSessionTools {
     var extraArguments: [String]
     var configURL: URL
 }
@@ -15,50 +15,59 @@ enum PluginToolHostError: Error, LocalizedError, Sendable {
         case .bridgeUnavailable:
             return "The plugin tool bridge is no longer available."
         case .configWrite(let message):
-            return "Couldn't prepare the plugin tool bridge. \(message)"
+            return "Couldn't prepare the session's MCP tools. \(message)"
         }
     }
 }
 
 extension AppModel {
-    /// Starts a scoped tool bridge and writes an MCP config for the Claude Code
-    /// process. The config contains only a local socket path and a random bridge
-    /// token; the code-host access token never leaves this app process.
-    func preparePluginTools(
+    /// Writes the MCP config for a Claude Code process. Code-host tools get a
+    /// scoped bridge; a project with a built Graphify graph also gets the local
+    /// graph server. The config contains only a socket path, a random bridge
+    /// token, and local executable paths; no code-host token ever leaves this
+    /// app process.
+    func prepareSessionTools(
         for sessionID: UUID,
         project: Project
-    ) throws -> PreparedPluginTools? {
-        guard let remote = GitRepositoryReader.originRemote(at: project.url),
-              let plugin = resolvedPlugin(for: project, remote: remote),
-              let helperURL = pluginMCPHelperURL() else {
-            return nil
-        }
-
+    ) throws -> PreparedSessionTools? {
         stopPluginToolBridge(for: sessionID)
 
-        let bridge = try PluginToolBridge { [weak self] request in
-            guard let self else {
-                throw PluginToolHostError.bridgeUnavailable
-            }
-            return try await self.handlePluginTool(
-                request,
-                remote: remote,
-                plugin: plugin
-            )
-        }
+        var mcpServers: [String: Any] = [:]
+        var bridge: PluginToolBridge?
+        var systemPrompt: String?
 
-        let config: [String: Any] = [
-            "mcpServers": [
-                "Gantry_plugins": [
-                    "command": helperURL.path,
-                    "args": ["mcp"],
-                    "env": [
-                        "Gantry_PLUGIN_SOCKET": bridge.socketPath,
-                        "Gantry_PLUGIN_AUTH": bridge.authToken
-                    ]
+        if let remote = GitRepositoryReader.originRemote(at: project.url),
+           let plugin = resolvedPlugin(for: project, remote: remote),
+           let helperURL = pluginMCPHelperURL() {
+            let pluginBridge = try PluginToolBridge { [weak self] request in
+                guard let self else {
+                    throw PluginToolHostError.bridgeUnavailable
+                }
+                return try await self.handlePluginTool(
+                    request,
+                    remote: remote,
+                    plugin: plugin
+                )
+            }
+            bridge = pluginBridge
+            mcpServers["Gantry_plugins"] = [
+                "command": helperURL.path,
+                "args": ["mcp"],
+                "env": [
+                    "Gantry_PLUGIN_SOCKET": pluginBridge.socketPath,
+                    "Gantry_PLUGIN_AUTH": pluginBridge.authToken
                 ]
             ]
-        ]
+            systemPrompt = pluginSystemPrompt(plugin: plugin, remote: remote)
+        }
+
+        if let graphify = GraphifyIntegration.mcpServer(forProject: project.url) {
+            mcpServers["graphify"] = graphify
+        }
+
+        guard !mcpServers.isEmpty else { return nil }
+
+        let config: [String: Any] = ["mcpServers": mcpServers]
 
         let configURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("Gantry-mcp-\(sessionID.uuidString).json")
@@ -73,22 +82,21 @@ extension AppModel {
                 ofItemAtPath: configURL.path
             )
         } catch {
-            bridge.stop()
+            bridge?.stop()
             throw PluginToolHostError.configWrite(error.localizedDescription)
         }
 
-        pluginToolBridges[sessionID] = bridge
+        if let bridge {
+            pluginToolBridges[sessionID] = bridge
+        }
         pluginToolConfigURLs[sessionID] = configURL
 
-        let systemPrompt = pluginSystemPrompt(
-            plugin: plugin,
-            remote: remote
-        )
-        return PreparedPluginTools(
-            extraArguments: [
-                "--mcp-config", configURL.path,
-                "--append-system-prompt", systemPrompt
-            ],
+        var extraArguments = ["--mcp-config", configURL.path]
+        if let systemPrompt {
+            extraArguments.append(contentsOf: ["--append-system-prompt", systemPrompt])
+        }
+        return PreparedSessionTools(
+            extraArguments: extraArguments,
             configURL: configURL
         )
     }

@@ -307,8 +307,8 @@ extension AppModel {
 
         var extraArguments: [String] = []
         do {
-            if let pluginTools = try preparePluginTools(for: sessionID, project: project) {
-                extraArguments = pluginTools.extraArguments
+            if let sessionTools = try prepareSessionTools(for: sessionID, project: project) {
+                extraArguments = sessionTools.extraArguments
             }
         } catch {
             activities[sessionID]?.banner =
@@ -620,22 +620,25 @@ extension AppModel {
         // Each assistant response reports the prompt that produced it. The
         // newest one is the best snapshot of how full the context window is.
         let contextChanged: Bool
-        if let usage = message.usage,
-           usage.contextTokens > 0,
-           usage.contextTokens != session.contextTokens {
+        if let usage = message.usage, usage.contextTokens > 0 {
+            let previousTokens = session.contextTokens
+            let previousModelName = session.contextModelName
             session.contextTokens = usage.contextTokens
             if let model = message.model,
                !model.isEmpty,
                model != "<synthetic>" {
-                // Keep a resolved name such as `deepseek-flash[1m]` from a
-                // previous result; assistant events report the unresolved id.
-                if session.contextModelName == nil || model.contains("[1m]") {
+                // Context belongs to the model that produced this response.
+                // Keep a resolved `[1m]` spelling for the same model, but do
+                // not let a model switch leave a stale context window behind.
+                let resolvedModel = model.lowercased().hasSuffix("[1m]") ? model : model + "[1m]"
+                if previousModelName?.caseInsensitiveCompare(resolvedModel) != .orderedSame {
                     session.contextModelName = model
                 }
             } else if session.contextModelName == nil {
                 session.contextModelName = session.actualModelName
             }
-            contextChanged = true
+            contextChanged = session.contextTokens != previousTokens
+                || session.contextModelName != previousModelName
         } else {
             contextChanged = false
         }
@@ -835,11 +838,15 @@ extension AppModel {
                !reportedModel.isEmpty {
                 session.actualModelName = reportedModel
             }
-            // `modelUsage` keys carry Claude Code's resolved name, including a
-            // `[1m]` marker. Prefer it so the context meter can size the window
-            // accurately instead of guessing from the requested alias.
-            if let reportedModel = usage.modelName, !reportedModel.isEmpty {
-                session.contextModelName = reportedModel
+            // `modelUsage` is cumulative and may be dominated by a subagent.
+            // It must not choose the context model. Only resolve a `[1m]`
+            // spelling for the assistant model that produced the context.
+            if let contextModel = session.contextModelName,
+               !contextModel.lowercased().contains("[1m]"),
+               let resolved = result.modelUsage.keys.first(where: {
+                   $0.caseInsensitiveCompare(contextModel + "[1m]") == .orderedSame
+               }) {
+                session.contextModelName = resolved
             }
             // A result without a cumulative snapshot must not keep a stale
             // baseline: the next cumulative report would otherwise price the

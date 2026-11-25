@@ -255,6 +255,21 @@ struct CommandPaletteView: View {
                 }
             ),
             PaletteEntry(
+                id: "action.graphify",
+                kind: .action,
+                title: "Graphify",
+                subtitle: "Build and query this project's knowledge graph",
+                icon: "network",
+                tint: Palette.info,
+                hint: nil,
+                searchText: "graphify graph knowledge codebase query architecture index",
+                action: {
+                    dismissAnd {
+                        app.showGraphify()
+                    }
+                }
+            ),
+            PaletteEntry(
                 id: "action.plugins",
                 kind: .action,
                 title: "Manage Code Hosts…",

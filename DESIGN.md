@@ -220,9 +220,9 @@ card. Drag-and-drop a folder is supported; the drop target changes without
 moving the layout.
 
 **Sidebar** — a glass rail with the lockup, search, New session, Extensions &
-Mods, then projects and sessions. The selected row uses `sidebarSelection` plus
-a 2 pt accent rail. Hover uses `sidebarHover` and never moves the row. The
-footer holds Settings.
+Mods, Graphify, then projects and sessions. The selected row uses
+`sidebarSelection` plus a 2 pt accent rail. Hover uses `sidebarHover` and never
+moves the row. The footer holds Settings.
 
 **Chat header** — repository/branch control, provider menu, repository panel,
 and inspector toggle. The model and permission menus live in the composer.
@@ -238,12 +238,12 @@ model and permission controls, and a circular send/stop button. Return sends;
 Shift-Return inserts a newline. While a slash token is being typed, Return
 chooses the highlighted command instead of sending. Focus is an accent ring.
 Above the text field, a quiet context meter shows the prompt tokens Claude Code
-last reported against the model's window, sized from Claude Code's resolved
-model name, with a neutral fill that turns warning and then danger as the
-window fills. Files and folders can be dragged onto the glass or chosen with the
-paperclip; chips sit above the text field with a quiet ink wash and hairline,
-and a drop uses the same accent focus ring. A prompt may consist of attachments
-alone.
+last reported against the model's window, sized from the resolved model name of
+the response that produced those tokens, with a neutral fill that turns warning
+and then danger as the window fills. Files and folders can be dragged onto the
+glass or chosen with the paperclip; chips sit above the text field with a quiet
+ink wash and hairline, and a drop uses the same accent focus ring. A prompt may
+consist of attachments alone.
 
 **Permission card** — a floating glass card above the composer. It names the
 tool and target, shows details on demand, and offers **Allow once**, a
@@ -255,12 +255,12 @@ Never hide the deny path or preselect approval.
 It shows one question at a time with its optional header, offers every choice
 with its description, and keeps an “Other” field for a typed answer; text
 questions get a field, and number questions get a numeric field with range
-hints. Multi-question sheets use clickable step chips plus **Back** and
-**Next**, so answers can be revisited before sending, and report how many are
-answered. **Send answer** appears on the last question and stays disabled until
-at least one answer is valid; **Decline** is always visible. The accent marks
-the current step, the selected option, and the primary action, while surfaces
-stay neutral.
+hints and inline validation. Multi-question sheets use clickable step chips
+plus **Back** and **Next**, so answers can be revisited before sending, and
+report how many are answered. **Send answer** appears on the last question and
+stays disabled until at least one answer is valid; **Decline** is always
+visible. The accent marks the current step, the selected option, and the
+primary action, while surfaces stay neutral.
 
 **Command palette and slash menu** — glass panels, keyboard first. Arrow keys
 move the highlight; Return runs or completes; Escape closes. Hover highlights a
@@ -276,7 +276,16 @@ searched; the sidebar field remains a session filter.
 
 **Inspector** — content cards for session usage, estimated cost, token totals,
 and changed files. Keep figures tabular and labels quiet. **Review** in the
-Edited files card opens the review sheet.
+Edited files card opens the review sheet. A **Sub-agents** card appears when
+the session delegated work: one row per Task/Agent call with its type,
+description, quiet status, and duration; selecting a row opens the sub-agent
+detail sheet.
+
+**Sub-agent detail** — a content sheet, not glass. Status, duration, and start
+time sit in three small metric cards; the prompt and final report follow as
+Markdown in `surfaceCard` surfaces with a copy control. A running delegation
+shows a spinner and "Still running…"; a background delegation says its report
+is not captured instead of presenting the task id as content.
 
 **Review changes** — a content sheet, not glass, that gathers Claude's file
 edits for the session. A quiet file rail on the left shows relative paths,
@@ -295,6 +304,13 @@ confirm by name and consequence.
 source state use quiet badges; install is the primary action, uninstall is
 destructive and confirmed.
 
+**Graphify** — one project's knowledge graph. A `surfaceCard` status card shows
+the project, graph file, and quiet CLI/MCP badges; **Build Graph** or **Update
+Graph** is the primary action, with **Open Graph** secondary. A query card runs
+a graph query and shows the result in a code surface. When Graphify is missing,
+an install card names the exact `uv` command; its confirmation sheet is a
+content surface, not glass.
+
 **Repository panel** — pull requests, checks, comments, and creation. Check
 states use semantic colors; write actions confirm what will change on the
 remote.
@@ -306,9 +322,10 @@ quiet status badge, then sections for **Needs you**, **Working**, and
 **Finished**. Permission cards use native bordered buttons and keep Deny,
 the contextual always-allow action, and Allow once. Question cards are compact
 forms with the same choice, text, number, and multi-select answers as the main
-card, plus Decline. The footer holds **Open Gantry**, **Settings**, and
-**Quit Gantry**. Closing the main window hides the app while leaving all of this
-available and does not stop turns.
+card, including inline validation for number fields, plus Decline. The footer
+holds **Open Gantry**, **Settings**, and **Quit Gantry**. Closing the main
+window hides the app while leaving all of this available and does not stop
+turns.
 
 ## Accessibility
 
@@ -318,9 +335,9 @@ available and does not stop turns.
   (`CanvasBackground`) from assistive technology.
 - Keep contrast for secondary text; do not use `faintInk` for essential copy.
 - Maintain visible keyboard focus. The composer focus ring is the model.
-- Keyboard shortcuts: ⌘N new session, ⌘O open project, ⌘K command palette,
-  ⇧⌘I inspector, ⇧⌘E Extensions & Mods, ⇧⌘R review changes, ⇧⌘F find in
-  conversations, ⌘. stop.
+- Keyboard shortcuts: ⌘N new session, ⌘O open project, ⌘0 open Gantry,
+  ⌘K command palette, ⇧⌘I inspector, ⇧⌘E Extensions & Mods, ⇧⌘R review
+  changes, ⇧⌘F find in conversations, ⌘. stop.
 - Hit targets stay at least 28 pt for icon buttons.
 - Test both appearances and, for anything that moves, Reduce Motion.
 

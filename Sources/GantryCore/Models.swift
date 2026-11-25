@@ -306,6 +306,40 @@ public struct ToolActivity: Codable, Hashable, Identifiable, Sendable {
         guard let completedAt else { return nil }
         return completedAt.timeIntervalSince(startedAt)
     }
+
+    /// The `subagent_type` of a `Task`/`Agent` call, when present.
+    public var subagentType: String? {
+        let type = input["subagent_type"]?.stringValue?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (type?.isEmpty == false) ? type : nil
+    }
+
+    public var subagentTypeTitle: String {
+        guard let type = subagentType else { return "Sub-agent" }
+        return type
+            .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+            .capitalized
+    }
+
+    public var subagentDescription: String {
+        if let description = input["description"]?.stringValue?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !description.isEmpty {
+            return description
+        }
+        if let prompt = input["prompt"]?.stringValue,
+           !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return SessionTitle.generated(from: prompt)
+        }
+        return "Sub-agent"
+    }
+
+    /// Claude Code returns a task id instead of a report for background agents.
+    public var isBackgroundSubagent: Bool {
+        input["run_in_background"]?.boolValue == true
+            || resultText?.hasPrefix("task-") == true
+    }
 }
 
 public struct MessageBlock: Codable, Hashable, Identifiable, Sendable {
@@ -422,6 +456,26 @@ public struct ConversationTurn: Codable, Hashable, Identifiable, Sendable {
     }
 }
 
+/// Session titles shared by the live composer and the sub-agent inspector so
+/// both derive the same name from a first prompt.
+public enum SessionTitle {
+    public static func generated(from prompt: String) -> String {
+        let firstLine = prompt
+            .split(whereSeparator: \.isNewline)
+            .first
+            .map(String.init) ?? prompt
+        let collapsed = firstLine
+            .replacingOccurrences(of: "`", with: "")
+            .replacingOccurrences(of: "#", with: "")
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+        if collapsed.isEmpty { return "New session" }
+        if collapsed.count <= 52 { return collapsed }
+        let cutoff = collapsed.index(collapsed.startIndex, offsetBy: 52)
+        return String(collapsed[..<cutoff]).trimmingCharacters(in: .whitespacesAndNewlines) + "…"
+    }
+}
+
 public struct ChatSession: Codable, Hashable, Identifiable, Sendable {
     public var id: UUID
     public var claudeSessionID: UUID
@@ -500,6 +554,12 @@ public struct ChatSession: Codable, Hashable, Identifiable, Sendable {
 
     public var tools: [ToolActivity] {
         turns.flatMap(\.tools)
+    }
+
+    /// Task/Agent calls in this session, in conversation order. Claude Code
+    /// renamed Task to Agent in newer versions, so both are matched.
+    public var subagentTools: [ToolActivity] {
+        tools.filter { $0.name == "Task" || $0.name == "Agent" }
     }
 
     public var changedFilePaths: [String] {

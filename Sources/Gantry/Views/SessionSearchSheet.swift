@@ -19,6 +19,10 @@ struct SessionSearchSheet: View {
         query.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var normalizedQuery: String {
+        SessionSearch.normalizedQuery(query)
+    }
+
     private var clampedSelection: Int {
         guard !hits.isEmpty else { return 0 }
         return min(max(selectedIndex, 0), hits.count - 1)
@@ -277,8 +281,8 @@ struct SessionSearchSheet: View {
     // MARK: - Actions
 
     private func runSearch() async {
-        let trimmed = trimmedQuery
-        guard !trimmed.isEmpty else {
+        let normalized = normalizedQuery
+        guard !normalized.isEmpty else {
             hits = []
             searchedQuery = ""
             selectedIndex = 0
@@ -292,12 +296,12 @@ struct SessionSearchSheet: View {
 
         let projects = app.projects
         let results = await Task.detached(priority: .userInitiated) {
-            SessionSearch.search(query: trimmed, projects: projects)
+            SessionSearch.search(query: normalized, projects: projects)
         }.value
         guard !Task.isCancelled else { return }
 
         hits = results
-        searchedQuery = trimmed
+        searchedQuery = normalized
         selectedIndex = 0
         isSearching = false
     }
@@ -311,7 +315,7 @@ struct SessionSearchSheet: View {
 
     private func openSelected() {
         guard !isSearching,
-              searchedQuery == trimmedQuery,
+              searchedQuery == normalizedQuery,
               hits.indices.contains(clampedSelection) else {
             return
         }
@@ -319,6 +323,7 @@ struct SessionSearchSheet: View {
     }
 
     private func open(_ hit: SessionSearchHit) {
+        guard !isSearching, searchedQuery == normalizedQuery else { return }
         app.pendingTurnScroll = hit.turnID.map {
             PendingTurnScroll(sessionID: hit.sessionID, turnID: $0)
         }

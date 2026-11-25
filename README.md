@@ -2,7 +2,7 @@
 
 A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid Glass. It runs Claude Code in the background and keeps the conversation, project context, streaming output, tool permissions, and AI provider choice in one calm window instead of a terminal.
 
-**Gantry 0.4.0** adds a context meter, file and folder attachments, Review & Ship, conversation-wide search, and a menu bar that keeps Claude working when the window is closed.
+**Gantry 0.4.1** adds optional Graphify knowledge graphs and an inspector view of sub-agent runs, with a round of review fixes.
 
 ![Gantry welcome](docs/screenshot-welcome.jpg)
 
@@ -11,6 +11,12 @@ A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid G
 ![Claude Code permission card](docs/screenshot-permission.jpg)
 
 ![AI providers](docs/screenshot-providers.jpg)
+
+## What's new in 0.4.1
+
+- **Graphify knowledge graphs.** An optional local Graphify integration: the **Graphify** page builds or refreshes a project's code graph, opens the generated `graph.html`, and runs queries. Chats whose project has a built graph get the `graphify-mcp` server automatically, with no manual MCP setup. Installing Graphify requires an exact `uv` command and an explicit confirmation.
+- **Sub-agent runs.** The inspector now lists every `Task`/`Agent` delegation with its type, description, live status, and duration. Selecting one shows the prompt Claude gave the sub-agent and its final report; background delegations are labelled.
+- **Review fixes.** The context meter is sized from the model that produced the tokens, with unknown custom models assumed to have a 1M window. Commit pathspecs are literal per reviewed file and skip paths that became directories; conversation search normalizes repeated whitespace; number questions validate inline. `⌘0` reopens Gantry, and `CLAUDE_CODE_PATH` is honored alongside the existing override.
 
 ## What's new in 0.4.0
 
@@ -47,16 +53,18 @@ A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid G
 - **AI provider menu.** Add Anthropic-compatible gateways as named providers, then switch the backend for any chat from the provider menu in its header. Existing conversations resume on the new provider. The built-in **Claude Code** provider keeps using your current CLI setup, so your existing DeepSeek configuration remains available without reconfiguring anything.
 - **Code-host plugins.** Connect GitHub, GitLab, or Gitea accounts in **Settings → Code Hosts**, then open the repository panel from any chat. It detects the project's `origin` remote and can list open pull requests, inspect CI checks, post a comment, or create a pull request. When multiple accounts match a host, choose the one for the project. Matching plugins are also exposed to Claude Code as a scoped MCP server.
 - **Extensions & mods.** A top-level page for the Claude Code plugin ecosystem: browse marketplaces, install and manage skills, commands, agents, hooks, MCP bundles, and UI mods, favorite source repositories, and create your own mod. Installed state stays with Claude Code's `claude plugin` CLI, so the same extensions work in the terminal. Installing third-party code always requires a trust review; marketplace-declared install commands need a separate explicit approval and are never auto-accepted. Changes apply to new chats, and running chats restart their Claude process after the current turn.
+- **Graphify knowledge graphs.** If [Graphify](https://github.com/Graphify-Labs/graphify) is installed, Gantry gives each chat whose project has a built graph the local `graphify-mcp` server, so Claude can query the codebase graph without a manual MCP setup. The **Graphify** page in the sidebar builds or refreshes the code graph with `graphify update`, opens the generated `graph.html`, and runs `graphify query` inline. When Graphify is missing, the page offers the documented `uv tool install "graphifyy[mcp]"` command behind a confirmation sheet; Gantry never installs it silently. Graph building is local and code-only; documentation, PDF, image, and media extraction still uses Graphify's own `/graphify` workflow.
 - **Slash commands, including extension and mod commands.** Type `/` in the composer to open a filtered list of the session's commands. The menu shows each command's argument hint and description, and labels commands contributed by an extension or mod. Arrow keys navigate; Return completes the highlighted command so you can add arguments. It runs immediately if the typed token exactly matches the highlighted command's name or alias. The catalog is requested from the chat's own Claude Code process, so project commands, installed plugins, and mods loaded with `--plugin-dir` appear without a first prompt. `/clear` starts a new Gantry session and `/rename` updates the displayed title, so the two commands that manage session identity stay in sync with Gantry's own state.
-- **Context meter.** The composer shows how many prompt tokens Claude Code last reported, including cached context, as a quiet bar against the model's context window. It uses the resolved model name Claude Code reports, so 1M variants such as `deepseek-flash[1m]` are sized at 1M; standard Anthropic generations use 200K. It turns cautionary and then destructive as the window fills, so long conversations show when a compaction is near. Return sends and Shift-Return inserts a newline.
+- **Context meter.** The composer shows how many prompt tokens Claude Code last reported, including cached context, as a quiet bar against the model's context window. The window size comes from the resolved model name that produced those tokens: a `[1m]` marker such as `deepseek-flash[1m]` means 1M, standard-window Anthropic generations use 200K, and unknown custom models assume 1M. It turns cautionary and then destructive as the window fills, so long conversations show when a compaction is near. Return sends and Shift-Return inserts a newline.
 - **Attach files and folders.** Drag files or folders onto the composer, or use the paperclip. Attachments appear as removable chips and their absolute paths are added to the prompt, so Claude can read them with its normal tools and permissions. A prompt can be attachments alone, and dropping files highlights the composer with the same accent focus ring.
 - **Review & Ship.** Open **Review changes** from the chat header, the inspector, or `⇧⌘R` to see every file Claude edited in one place. Each file keeps its changes in order with a native diff, line counts, and a note field; **Send notes** turns the notes into one focused message back to Claude. **Commit…** commits exactly the reviewed project files with your message, uses your Git signing and hooks normally, and never pushes.
 - **Keys in Apple Passwords.** Provider API keys are written to the macOS Keychain as internet-password items, never to Gantry's session file, logs, or command line. When iCloud Keychain is available, they can sync through Apple Passwords. Keys can be entered, replaced, or removed from **Settings → Providers** and are shown as masked fields only.
 - **Sessions that survive restarts.** Projects, chats, provider choice, model choice, and permission mode are stored locally. The Claude Code session ID is resumed automatically after relaunch.
 - **Runs in the menu bar.** Closing the window hides Gantry but keeps Claude Code running. The menu bar item shows working sessions, finished turns, and requests that need you; its popover lets you allow or deny actions and answer Claude's questions without reopening the main window. **Open Gantry** restores the window; **Quit Gantry** or ⌘Q stops background work.
 - **Real tool activity.** Bash, Read, Write, Edit, Task, web, MCP, and other tool calls appear as compact, inspectable rows. Expanded views show commands, file diffs, output, todos, and structured results.
+- **Sub-agent visibility.** Every `Task`/`Agent` delegation appears in the inspector with its type, description, live status, and duration. Selecting one shows the prompt Claude gave the sub-agent and its final report. Background tasks are labelled because Claude Code reports their result later.
 - **Model-aware cost estimates.** Turn and session costs are calculated from the reported model's published token pricing and actual usage, instead of relying on Claude Code's cost assumptions. Unknown models fall back to the estimate Claude Code reports. These are estimates, not billing data.
-- **Search every conversation.** `⇧⌘F` searches session titles, prompts, answers, commands, and file paths across every project. Results show a snippet with the match highlighted; Return opens the session and scrolls to the matching turn. The sidebar field remains a quick filter for session names.
+- **Search every conversation.** `⇧⌘F` searches session titles, prompts, answers, commands, and file paths across every project. Results show a snippet with the match highlighted; Return opens the session and scrolls to the matching turn. Queries ignore leading and trailing spaces and collapse runs of whitespace, so a path or phrase matches regardless of spacing. The sidebar field remains a quick filter for session names.
 - **Workbench details.** A sidebar for projects and sessions, a command palette (`⌘K`), streaming Markdown with code highlighting and tables, a session inspector, and a model-aware estimated usage view.
 - **A design that belongs on macOS.** SF typography, a warm neutral canvas, system/light/dark appearance, and Apple's Liquid Glass (`glassEffect` and `GlassEffectContainer`) for the sidebar and the floating controls. Content surfaces stay flat with hairlines instead of imitating glass. macOS 26 or later is required for the glass APIs.
 
@@ -68,6 +76,7 @@ A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid G
   - Developed against Claude Code `2.1.330`
   - Gantry uses your existing Claude Code login, settings, model aliases, hooks, and MCP servers
   - Extension management requires a Claude Code version with the `claude plugin` commands
+- Optional: [Graphify](https://github.com/Graphify-Labs/graphify) for project knowledge graphs. Gantry can install it with `uv` from the Graphify page.
 
 ## Build and run
 
@@ -98,9 +107,12 @@ Optional integration tests:
 ```sh
 # Spends a small amount of API credit against the installed CLI.
 Gantry_RUN_CLI_INTEGRATION=1 swift test --filter realClaudeCodeSmokeTest
+Gantry_RUN_CLI_INTEGRATION=1 swift test --filter realClaudeCodeReportsSlashCommands
+Gantry_RUN_CLI_INTEGRATION=1 swift test --filter modScaffoldCLIValidation
 
-# Writes and deletes a disposable test item in the login Keychain.
+# Writes and deletes disposable test items in the login Keychain.
 Gantry_RUN_KEYCHAIN_TESTS=1 swift test --filter keychainRoundTrip
+Gantry_RUN_KEYCHAIN_TESTS=1 swift test --filter pluginKeychainRoundTrip
 ```
 
 ## How it works
@@ -224,8 +236,21 @@ The **Extensions & Mods** page in the sidebar (or `⇧⌘E`) manages the Claude 
 - The repository panel and MCP tools expose open pull requests, conversation comments, CI checks, and pull-request creation. Inline review threads, merging, and dispatching CI workflows are not included; checks are read-only.
 - Code-host features need an `origin` remote. When several accounts match a host, the selected account is remembered per project.
 - The MCP bridge is scoped to one repository and requires the bundled `Gantry-plugins` helper, which the provided build script includes. It is only active when the chat's Claude Code process starts with a matching plugin; changing code hosts recycles idle runtimes.
-- No file or image attachments or MCP elicitation UI. Standard permission prompts and `AskUserQuestion` dialogs are supported.
+- Graphify is optional and not bundled. Gantry finds an existing install on `PATH` or in `~/.local/bin`, `/opt/homebrew/bin`, or `/usr/local/bin`. With `uv` available, the Graphify page can install `graphifyy[mcp]` after a confirmation sheet; without it, the page shows the command for Terminal.
+- The Graphify page builds code graphs with `graphify update`, which is local and does not call a model. Doc, PDF, image, audio, and video extraction still needs Graphify's `/graphify` skill in a chat. The generated files live in the project's `graphify-out/` folder.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:9c98ae3d8fe144ceba5e8f18dfb1463011bce6f7da70dbaa4869a9d4cc2d8f0c -->
+
+- Graph MCP tools appear when a chat starts. Installing Graphify refreshes chats across all projects; building a graph refreshes chats in that project. Idle chats recycle immediately, and running chats pick up the tools after their next turn. **Open Graph** opens the generated `graph.html` in the default browser.
+
+<!-- /coderabbit-ai-generated:v1 -->
+- Image attachments and MCP elicitation UI are not supported. File and folder paths can be attached from the composer, and standard permission prompts and `AskUserQuestion` dialogs are supported.
+- The context meter estimates the window from the resolved model name. Providers that report an unrecognized model name are assumed to have a 1M window.
+- **Commit…** requires the project folder to be a Git working tree. If Git is unavailable or the folder is not a repository, the sheet shows Git's error and commits nothing.
+- Conversation search scans the loaded session history in memory; there is no on-disk index, so very large histories take longer to search.
 - Slash commands whose interface is terminal-only, such as prompt-bar color or focus mode, run through Claude Code but have no visual effect in Gantry. `/clear` starts a new Gantry session and `/rename` changes the session title.
+- **Sub-agent details cover the Task/Agent call**, not its internal tool calls: type, description, status, timing, prompt, and final report. Background sub-agents (`run_in_background`) report a task id instead of a report and are labelled as background.
 - Files edited via Bash are not listed in the inspector's edited-files list (only file-editing tools such as Edit, MultiEdit, Write, and NotebookEdit are).
 - Idle Claude Code processes stay alive while the app is open, which keeps follow-ups fast at the cost of memory.
 - If iCloud Keychain sync is unavailable (for example an ad-hoc local build), keys stay in the local login Keychain.
@@ -262,11 +287,12 @@ Sources/GantryCore/
   SessionSearch.swift   In-memory full-text search over titles, turns, and tool paths
   PromptAttachments.swift Composer file/folder attachments and prompt composition
   GitCommit.swift       Pathspec staging and commit service; never pushes or bypasses hooks
+  Graphify.swift        Graphify detection, MCP server entry, status, commands, and process runner
 Sources/Gantry/
-  App/                  App entry, observable state, providers, plugins, extensions, MCP bridge lifecycle, conversation orchestration
+  App/                  App entry, observable state, providers, plugins, extensions, Graphify install/build state, MCP bridge lifecycle, conversation, review, search, and menu bar state
   Design/               Palette, type scale, surface and glass helpers, brand mark, shared controls
   Utilities/            Inline Markdown, syntax highlighting, tool and provider presentation
-  Views/                Welcome, sidebar, conversation, composer, permissions and questions, inspector, settings, provider editor, code-host settings, repository panel, extensions and mods
+  Views/                Welcome, sidebar, conversation, composer, permissions and questions, inspector, settings, provider editor, code-host settings, repository panel, extensions and mods, Graphify page, conversation search, sub-agent details, review changes, menu bar extra
 Sources/GantryPluginMCP/
   main.swift            Bundled stdio MCP server; forwards tool calls to the app
 Scripts/
@@ -276,7 +302,7 @@ Scripts/
 
 ## Verification
 
-- `swift test` — tests covering protocol parsing/serialization, runtime permission flow with a fake CLI, `AskUserQuestion` parsing and answers, provider environment injection, model-aware cost estimation, plugin remote parsing and REST fixtures, MCP tool execution and the Unix-socket bridge, Claude Code plugin catalog/command parsing, slash-command catalog parsing and matching, favorites, mod scaffolding, Markdown, persistence, and 0.1.0 state compatibility.
+- `swift test` — tests covering protocol parsing/serialization, runtime permission flow with a fake CLI, `AskUserQuestion` parsing and answers, provider environment injection, model-aware cost estimation, context-window sizing, prompt attachment composition, session review and literal-pathspec commits, conversation search normalization, Graphify detection and MCP wiring, Graphify command construction and its shell-free process runner, plugin remote parsing and REST fixtures, MCP tool execution and the Unix-socket bridge, Claude Code plugin catalog/command parsing, slash-command catalog parsing and matching, favorites, mod scaffolding, Markdown, persistence, and 0.1.0 state compatibility.
 - Extension scaffolding can be validated against the real CLI:
   ```sh
   Gantry_RUN_CLI_INTEGRATION=1 swift test --filter modScaffoldCLIValidation

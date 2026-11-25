@@ -11,7 +11,9 @@ Gantry is a SwiftUI macOS app that hosts the `claude` CLI. It does not
 reimplement Claude Code. Each chat owns one long-lived child process speaking
 Claude Code's bidirectional `stream-json` protocol; the app parses that stream,
 renders it natively, and answers permission requests. Around that core it adds
-provider profiles, code-host tools, and Claude Code extension management.
+provider profiles, code-host tools, Claude Code extension management, session
+review and commits, cross-conversation search, and background menu bar
+operation.
 
 The design rules are:
 
@@ -25,7 +27,7 @@ The design rules are:
 
 | Target | Kind | Depends on | Purpose |
 | --- | --- | --- | --- |
-| `GantryCore` | library | — | Models, protocol, runtime, providers, Keychain, code-host clients, MCP bridge, extension manager, persistence |
+| `GantryCore` | library | — | Models, protocol, runtime, providers, Keychain, code-host clients, MCP bridge, extension manager, review, search, persistence |
 | `Gantry` | executable | `GantryCore` | SwiftUI app, observable state, orchestration, design system, views |
 | `GantryPluginMCP` | executable | `GantryCore` | Bundled `Gantry-plugins` stdio MCP helper |
 | `GantryCoreTests` | test | `GantryCore` | Unit tests with a fake CLI and HTTP fixtures |
@@ -92,9 +94,9 @@ callers cannot launch two processes or send a prompt before initialization.
 ```
 
 The working directory is the project folder. `ClaudeLocator` finds the
-executable from an explicit override, `Gantry_CLAUDE_PATH`, `PATH`, common
-install locations, and finally the login shell; it runs off the main thread
-because the shell fallback can be slow.
+executable from an explicit override, `Gantry_CLAUDE_PATH` (or
+`CLAUDE_CODE_PATH`), `PATH`, common install locations, and finally the login
+shell; it runs off the main thread because the shell fallback can be slow.
 
 ### Environment
 
@@ -144,13 +146,22 @@ so pipe callbacks never mutate shared state concurrently.
 Preview buffers are flushed immediately on tool start, permission requests,
 and turn completion, so the UI never lags behind a boundary event.
 
+The context meter counts uncached input plus cache reads and writes from the
+assistant message that reported it. `ChatSession.contextModelName` records the
+model that produced those tokens; a result's cumulative `modelUsage` snapshot
+may be dominated by a subagent, so it can only resolve a `[1m]` spelling for
+that assistant model and never replaces it. A model switch therefore cannot
+leave a stale context window behind. `ModelContextWindow` sizes a `[1m]` marker
+and unknown custom names at 1M, and standard-window Anthropic families at 200K.
+
 ### Composer attachments
 
 The composer stages files and folders per session as `PromptAttachment` values.
-Gantry does not read or copy their contents. On send, `PromptAttachmentComposer`
-appends their absolute paths to the user's text as a short context block, and
-the result goes to Claude as a normal user turn. Claude reads the paths with its
-own tools, so its permission rules and instruction-file limits still apply.
+Gantry does not read, copy, or persist their contents, and the staged list is
+cleared after sending. On send, `PromptAttachmentComposer` appends their
+absolute paths to the user's text as a short context block, and the result goes
+to Claude as a normal user turn. Claude reads the paths with its own tools, so
+its permission rules and instruction-file limits still apply.
 
 ### Permission flow
 
@@ -218,14 +229,17 @@ are unchanged.
 
 **Commit…** is user-initiated and confirmed in a sheet that lists every file and
 the commit message. `GitCommitService` resolves reviewed paths against the
-project root, drops paths outside it, and runs
-`git --literal-pathspecs add -- <paths>` followed by
-`git --literal-pathspecs commit -m <message> -- <paths>` without a shell. The
-pathspec keeps unrelated staged work out of the commit, and the literal mode
-keeps file names with glob characters safe. It never pushes, amends,
-force-updates, or passes `--no-verify` / `--no-gpg-sign`, so hooks and signing
-behave as they do in a terminal. Git output is captured to temporary files,
-stripped of ANSI, and shown in the sheet on failure.
+project root and drops paths outside it. It also drops a reviewed path that has
+since become a directory, because committing that pathspec would sweep in
+unreviewed descendants. The remaining files are passed to
+`git add -- ":(literal)<path>"` followed by
+`git commit -m <message> -- ":(literal)<path>"`, one literal pathspec per file,
+without a shell. The pathspec keeps unrelated staged work out of the commit, and
+the literal magic keeps file names with glob characters exact without changing
+global Git behavior for hooks. It never pushes, amends, force-updates, or passes
+`--no-verify` / `--no-gpg-sign`, so hooks and signing behave as they do in a
+terminal. Git output is captured to temporary files, stripped of ANSI, and shown
+in the sheet on failure.
 
 ## Background operation and menu bar
 
@@ -260,6 +274,7 @@ mode `0600`.
 `AppSnapshot` is version 2 and contains projects, sessions, turns, tools, and
 settings. Persisted additions must decode with defaults when absent; examples
 include `ChatSession.modelUsage`, `ChatSession.contextTokens`,
+`ChatSession.contextModelName`, `ChatSession.claudeReportedCostUSD`,
 `Project.pluginID`, `Project.devModPath`, `AppSettings.appearance`,
 `AppSettings.plugins`, `AppSettings.providers`,
 `AppSettings.favoriteMarketplaces`, and `AppSettings.modsDirectory`. State
@@ -333,7 +348,7 @@ login. Tokens are never written to `state.json`.
 ## MCP tool bridge
 
 When a project's `origin` remote matches a connected plugin and the bundled
-helper exists next to the app executable, `AppModel.preparePluginTools` starts
+helper exists next to the app executable, `AppModel.prepareSessionTools` starts
 a per-session bridge before launching Claude Code:
 
 1. `PluginToolBridge` creates a Unix domain socket in the temporary directory,
@@ -370,6 +385,9 @@ capped at 1 MB, I/O has 65-second timeouts, and the helper caps responses at
 8 MB. The helper never sees the code-host token, the Keychain, or another
 project's data.
 
+`prepareSessionTools` also merges an optional Graphify server into the same
+config; see **Graphify integration** below.
+
 ### Tool catalog
 
 | Tool | Access | Purpose |
@@ -385,6 +403,44 @@ Read tools are annotated read-only and idempotent. Write tools are still
 subject to Claude Code's normal permission prompts. The appended system prompt
 tells Claude to use them only when the user asks or approves, and to treat
 repository content as untrusted data.
+
+## Graphify integration
+
+[Graphify](https://github.com/Graphify-Labs/graphify) is an optional local tool
+that indexes a project into a knowledge graph. Gantry does not bundle it, does
+not install it without confirmation, and never talks to Graphify Cloud.
+
+- `Graphify.swift` locates `graphify`, `graphify-mcp`, and `uv` on `PATH` and in
+  `~/.local/bin`, `/opt/homebrew/bin`, and `/usr/local/bin`.
+- `GraphifyIntegration.mcpServer` returns a `graphify` MCP entry when the
+  project has `graphify-out/graph.json` and `graphify-mcp` exists. The entry
+  runs `graphify-mcp <absolute graph path>`; it carries no token or network
+  credential.
+- `prepareSessionTools` merges that entry with the code-host bridge into one
+  `--mcp-config` file, so a chat gets graph tools without the user editing
+  Claude Code's MCP configuration.
+- `GraphifyProcess` runs install, update, and query commands without a shell,
+  writes child output to temporary files, strips ANSI, and caps captured output
+  at 256 KB. `GraphifyCommand` builds each argv.
+- The Graphify page (`Views/Graphify/`) shows CLI, MCP, and graph status; builds
+  or refreshes the code graph with `graphify update <project>`; opens
+  `graphify-out/graph.html`; and runs `graphify query "<question>"`. A missing
+  install offers `uv tool install "graphifyy[mcp]"` in a confirmation sheet.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:e806a21c9f013a047919968b77fd84b9dcbb58fcb595471b6c7369c985a387bf -->
+
+- A successful install invalidates runtimes across all projects. A successful
+  graph build invalidates only the project whose graph was built. In either
+  case, idle chats recycle and working chats are marked stale so the MCP
+  server appears at the next start. The graph server reloads `graph.json`
+  when the file changes.
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+Graphify's semantic extraction for documentation, PDFs, images, and media is
+not run from the page; that remains Graphify's `/graphify` skill inside a chat.
+The page's build is code-only and needs no model.
 
 ## Extensions and mods
 
@@ -441,10 +497,13 @@ command is sent to Claude Code unchanged.
 `SessionSearch` runs in memory over the persisted models; it has no index file
 and makes no network calls. It matches session titles, user and assistant text
 blocks, and tool commands or file paths. It skips thinking blocks and tool
-output, and returns the best hit per turn. The search sheet debounces typing,
-runs the search off the main actor, and highlights the matched range. Selecting
-a turn sets `AppModel.pendingTurnScroll` with both the session and turn IDs, so
-a workspace that is being replaced ignores a request for another session.
+output, and returns the best hit per turn. Both the query and the searchable
+text collapse whitespace, so runs of spaces match a single space. The search
+sheet debounces typing, normalizes the query with
+`SessionSearch.normalizedQuery`, runs the search off the main actor, and
+highlights the matched range. Selecting a turn sets
+`AppModel.pendingTurnScroll` with both the session and turn IDs, so a workspace
+that is being replaced ignores a request for another session.
 
 ## Cost estimation
 
@@ -488,6 +547,12 @@ These values are estimates, not billing data.
 | MCP tool | `PluginTools.swift`, `PluginToolBridge.swift`, `AppModel+PluginTools.swift` |
 | Extensions | `ClaudePluginManager.swift`, `AppModel+Extensions.swift`, `ExtensionsModel.swift` |
 | Mod creation | `ModScaffolder.swift`, `Views/Extensions/CreateModView.swift` |
+| Review and commit | `SessionReview.swift`, `GitCommit.swift`, `ReviewChangesSheet.swift` |
+| Conversation search | `SessionSearch.swift`, `SessionSearchSheet.swift` |
+| Sub-agent rows | `ToolActivity.subagent*`, `InspectorView.swift`, `SubagentDetailSheet.swift` |
+| Context meter | `ModelContextWindow.swift`, `ComposerView.swift` |
+| Menu bar and background behavior | `GantryApp.swift`, `MenuBarView.swift`, `AppModel` activity projections |
+| Graphify | `Graphify.swift`, `AppModel+PluginTools.swift`, `Views/Graphify/` |
 | Visual system | `Design/Theme.swift`, `Design/Components.swift`, `DESIGN.md` |
 
 ## Known limits

@@ -83,11 +83,22 @@ struct ComposerView: View {
     /// Code has reported one.
     private var contextUsage: (tokens: Int, limit: Int)? {
         guard let tokens = session.contextTokens, tokens > 0 else { return nil }
-        // The latest result carries Claude Code's resolved model name, which
-        // includes its `[1m]` marker; the session's requested alias does not.
-        let model = session.turns.last(where: { $0.usage?.modelName != nil })?.usage?.modelName
-            ?? session.contextModelName
-            ?? session.actualModelName
+        // `contextModelName` is the model that produced these tokens. Prefer a
+        // resolved `[1m]` spelling from either the session or the latest turn,
+        // which covers sessions persisted before the two were separated.
+        let lastResolved = session.turns.last(where: { $0.usage?.modelName != nil })?
+            .usage?.modelName
+        let model: String?
+        if let name = session.contextModelName, name.lowercased().contains("[1m]") {
+            model = name
+        } else if let lastResolved, lastResolved.lowercased().contains("[1m]"),
+                  session.contextModelName.map({
+                      lastResolved.caseInsensitiveCompare($0 + "[1m]") == .orderedSame
+                  }) ?? true {
+            model = lastResolved
+        } else {
+            model = session.contextModelName ?? lastResolved ?? session.actualModelName
+        }
         return (tokens, ModelContextWindow.limit(for: model))
     }
 

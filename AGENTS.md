@@ -11,7 +11,9 @@ Gantry is a native macOS workspace for **Claude Code** — SwiftUI and Liquid
 Glass — that runs the `claude` CLI as a child process for each chat over its
 bidirectional `stream-json` protocol. It renders messages, tool activity, and
 permission prompts natively, and manages AI provider profiles, code-host
-plugins (GitHub, GitLab, Gitea), and Claude Code extensions and mods.
+plugins (GitHub, GitLab, Gitea), Claude Code extensions and mods, optional
+Graphify knowledge graphs, session review and commits, cross-conversation
+search, and background menu bar operation.
 
 It is an unofficial client and is not affiliated with Anthropic.
 
@@ -51,6 +53,7 @@ never in CI:
 # Spends a small amount of API credit against the installed CLI.
 Gantry_RUN_CLI_INTEGRATION=1 swift test --filter realClaudeCodeSmokeTest
 Gantry_RUN_CLI_INTEGRATION=1 swift test --filter realClaudeCodeReportsSlashCommands
+Gantry_RUN_CLI_INTEGRATION=1 swift test --filter modScaffoldCLIValidation
 
 # Writes and removes disposable items in the login Keychain.
 Gantry_RUN_KEYCHAIN_TESTS=1 swift test --filter keychainRoundTrip
@@ -66,7 +69,7 @@ Gantry_RUN_KEYCHAIN_TESTS=1 swift test --filter pluginKeychainRoundTrip
 
 | Target | Responsibility |
 | --- | --- |
-| `GantryCore` | Models, Claude runtime/protocol, providers, Keychain, code-host clients, MCP bridge, extension manager, persistence. All testable logic lives here. |
+| `GantryCore` | Models, Claude runtime/protocol, providers, Keychain, code-host clients, MCP bridge, extension manager, session review, search, persistence. All testable logic lives here. |
 | `Gantry` | SwiftUI app: `AppModel` observable state, orchestration, design system, views. |
 | `GantryPluginMCP` | Bundled stdio MCP helper (`Gantry-plugins`) that forwards tool calls to the app over a Unix socket. |
 | `GantryCoreTests` | Unit tests for `GantryCore` with a fake CLI and HTTP fixtures. |
@@ -98,6 +101,10 @@ These are non-negotiable unless the user explicitly asks to change the design.
   window hides the app and must not stop runtimes; the menu bar extra exposes
   the same pending permissions and questions. Its actions call the same
   `AppModel` response paths and never auto-approve anything.
+- **Commits are explicit and local**: Review & Ship commits only after a
+  confirmation sheet lists every file, stages each file with a literal
+  pathspec, and never pushes, amends, or bypasses hooks and signing. Do not add
+  an auto-commit or push path.
 - **Provider switching** injects env vars and credentials into that child
   process only, between turns. It must not persist secrets. Keys are read from
   the Keychain at launch.
@@ -203,9 +210,15 @@ A change is done when:
 | New provider environment variable | `AIProvider.environment(apiKey:)` | Provider tests; `ARCHITECTURE.md` provider env list |
 | New code host | `CodeHostBackend` implementation and `PluginKind` | Fixtures, plugin tests, token scopes, `SECURITY.md` |
 | New MCP tool | `PluginToolCatalog` and `PluginToolExecutor` | Tool tests, system prompt, `ARCHITECTURE.md` catalog table |
+| Graphify integration | `Graphify.swift` and `AppModel+PluginTools.swift` | Graphify tests, `Views/Graphify/`, `README.md`, `SECURITY.md` |
 | New UI surface or control | `Sources/Gantry/Views/` | `Theme.swift`/`Components.swift`, light/dark check, accessibility, `DESIGN.md` |
 | New mod template | `ModScaffolder` and the Create Mod wizard | Scaffolder tests, `README.md` |
 | New setting | `AppSettings` | Optional default, Settings UI, state compatibility test |
+| Review or commit behavior | `SessionReview.swift` / `GitCommit.swift` | Review tests, `ARCHITECTURE.md`, `SECURITY.md` |
+| Conversation search | `SessionSearch.swift` and `SessionSearchSheet.swift` | Search tests, `ARCHITECTURE.md`, `DESIGN.md` |
+| Sub-agent information | `ToolActivity.subagent*` and `InspectorView.swift` | Sub-agent tests, `README.md`, `DESIGN.md` |
+| Context meter | `ModelContextWindow.swift` and `ComposerView.swift` | Window tests, `ARCHITECTURE.md`, `README.md` |
+| Menu bar or background behavior | `GantryApp.swift` and `MenuBarView.swift` | `ARCHITECTURE.md`, `DESIGN.md`, accessibility labels |
 | Release | Version constant, `Info.plist`, MCP helper version | `README.md` "What's new" |
 
 ## Local agent environment

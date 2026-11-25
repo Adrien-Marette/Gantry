@@ -213,7 +213,7 @@ while let line = readLine(strippingNewline: true) {
                 ]),
                 "serverInfo": .object([
                     "name": .string("Gantry-plugins"),
-                    "version": .string("0.4.0")
+                    "version": .string("0.4.1")
                 ])
             ])
         )

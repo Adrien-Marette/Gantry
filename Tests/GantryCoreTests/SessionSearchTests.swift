@@ -123,3 +123,27 @@ private func bashTool(id: String, command: String) -> ToolActivity {
     #expect(hits.count == 1)
     #expect(hits[0].kind == .title)
 }
+
+@Test func titleSearchNormalizesRepeatedWhitespace() {
+    let session = ChatSession(title: "Release  notes")
+    let project = Project(path: "/tmp/project", name: "Project", sessions: [session])
+
+    let hits = SessionSearch.search(query: "Release  notes", projects: [project])
+
+    #expect(hits.map(\.kind) == [.title])
+    #expect(hits.map(\.sessionTitle) == ["Release  notes"])
+}
+
+@Test func searchNormalizesRepeatedWhitespace() {
+    let turn = ConversationTurn(
+        role: .user,
+        blocks: [.makeText("Open /tmp/a  b.swift now")]
+    )
+    let session = ChatSession(title: "Files", turns: [turn])
+    let project = Project(path: "/tmp/project", name: "Project", sessions: [session])
+
+    let hits = SessionSearch.search(query: "a  b", projects: [project])
+
+    #expect(hits.contains { $0.kind == .user })
+    #expect(SessionSearch.normalizedQuery("  a  b  ") == "a b")
+}

@@ -565,7 +565,7 @@ private struct CommitChangesSheet: View {
                 }
 
                 if !plan.excludedDisplayPaths.isEmpty {
-                    Text("Outside the project and not committed: \(plan.excludedDisplayPaths.joined(separator: ", "))")
+                    Text("Excluded from the commit: \(plan.excludedDisplayPaths.joined(separator: ", "))")
                         .font(Typo.micro)
                         .foregroundStyle(Palette.warning)
                         .fixedSize(horizontal: false, vertical: true)

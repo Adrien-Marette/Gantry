@@ -57,6 +57,8 @@ Optional integration tests are gated because they touch real external systems:
 ```sh
 # Spends a small amount of API credit against the installed CLI.
 Gantry_RUN_CLI_INTEGRATION=1 swift test --filter realClaudeCodeSmokeTest
+Gantry_RUN_CLI_INTEGRATION=1 swift test --filter realClaudeCodeReportsSlashCommands
+Gantry_RUN_CLI_INTEGRATION=1 swift test --filter modScaffoldCLIValidation
 
 # Uses and removes disposable items in the login Keychain.
 Gantry_RUN_KEYCHAIN_TESTS=1 swift test --filter keychainRoundTrip
@@ -69,7 +71,7 @@ The package has four targets:
 
 | Target | Purpose |
 | --- | --- |
-| `GantryCore` | Models, Claude Code runtime, provider and Keychain handling, code-host clients, MCP bridge, persistence. Keep logic here so it stays testable. |
+| `GantryCore` | Models, Claude Code runtime, provider and Keychain handling, code-host clients, MCP bridge, session review, search, persistence. Keep logic here so it stays testable. |
 | `Gantry` | SwiftUI app: app state, design system, views, and orchestration. |
 | `GantryPluginMCP` | Bundled stdio MCP helper that forwards tool calls to the app. |
 | `GantryCoreTests` | Swift Testing suite for `GantryCore`, using a fake CLI and HTTP fixtures. |
@@ -87,6 +89,9 @@ before adding a new file, and update it when the structure changes.
   existing storage types.
 - Keep Claude Code's permission flow intact. Do not add a path that bypasses
   or auto-approves permission requests.
+- Keep Review & Ship commits explicit and local. The confirmation sheet must
+  list the files, each file is staged with a literal pathspec, and Gantry never
+  pushes, amends, or bypasses hooks or signing.
 - Streaming output is coalesced at roughly 30 fps; avoid introducing per-token
   UI work.
 - UI changes must be checked in light and dark appearance, respect the

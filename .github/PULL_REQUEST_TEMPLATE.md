@@ -26,5 +26,6 @@
 - [ ] Commits follow Conventional Commits.
 - [ ] Tests were added or updated for behavior changes.
 - [ ] README or docs were updated if user-facing behavior changed.
+- [ ] No permission auto-approval, auto-commit, or push paths were added.
 - [ ] No secrets, tokens, or `.env` files are included.
 - [ ] I agree that this contribution is licensed under the Gantry Community License 1.0.0.

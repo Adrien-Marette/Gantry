@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import GantryCore
 
@@ -60,30 +59,13 @@ extension AppModel {
     /// Offers to bring in Claude Code conversations this project already has on disk.
     func offerTranscriptImport(for projectID: UUID) {
         let preference = settings.transcriptImport ?? .ask
-        guard preference != .never,
-              let project = projects.first(where: { $0.id == projectID }) else { return }
+        guard preference != .never else { return }
         let urls = importableTranscriptURLs(for: projectID)
         guard !urls.isEmpty else { return }
 
         if preference == .ask {
-            let alert = NSAlert()
-            alert.messageText = "Import existing conversations?"
-            alert.informativeText = "\(project.name) has \(urls.count) Claude Code conversation\(urls.count == 1 ? "" : "s") that Gantry has not imported. Imported sessions can be continued here."
-            alert.addButton(withTitle: "Import All")
-            alert.addButton(withTitle: "Not Now")
-            alert.addButton(withTitle: "Choose…")
-            alert.showsSuppressionButton = true
-            alert.suppressionButton?.title = "Remember my choice"
-            let response = alert.runModal()
-            if response == .alertThirdButtonReturn {
-                transcriptImportProjectID = projectID
-                return
-            }
-            let accepted = response == .alertFirstButtonReturn
-            if alert.suppressionButton?.state == .on {
-                setTranscriptImportPreference(accepted ? .always : .never)
-            }
-            guard accepted else { return }
+            transcriptImportProjectID = projectID
+            return
         }
 
         transcriptImportStatus = ("Importing \(urls.count) conversation\(urls.count == 1 ? "" : "s")…", true)

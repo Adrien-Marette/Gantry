@@ -14,6 +14,7 @@ struct TranscriptImportSheet: View {
     @State private var checked: Set<UUID> = []
     @State private var previewID: UUID?
     @State private var remembersChoice = false
+    @State private var hoveredID: UUID?
 
     private var projectName: String {
         app.projects.first { $0.id == projectID }?.name ?? "Project"
@@ -83,26 +84,43 @@ struct TranscriptImportSheet: View {
             HStack(spacing: 0) {
                 list
                     .frame(width: 300)
-                Divider()
+                Hairline(axis: .vertical)
                 preview
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }
 
+    /// Styled like the main sidebar: Liquid Glass with an accent rail on the previewed row.
     private var list: some View {
-        List(selection: $previewID) {
-            Section("\(sessions.count) conversations") {
-                ForEach(sessions) { session in
-                    row(session).tag(session.id)
+        ZStack {
+            Color.clear
+                .glassEffect(.regular, in: Rectangle())
+
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 2) {
+                    SectionLabel(title: "\(sessions.count) conversations")
+                        .padding(.horizontal, 10)
+                        .padding(.bottom, 6)
+                    ForEach(sessions) { session in
+                        row(session)
+                    }
                 }
+                .padding(10)
             }
+            .scrollIndicators(.never)
         }
-        .listStyle(.sidebar)
     }
 
     private func row(_ session: ChatSession) -> some View {
-        HStack(spacing: 8) {
+        let isSelected = previewID == session.id
+        let isHovering = hoveredID == session.id
+        return HStack(spacing: 8) {
+            RoundedRectangle(cornerRadius: 1, style: .continuous)
+                .fill(Palette.accent)
+                .frame(width: 2, height: 28)
+                .opacity(isSelected ? 1 : 0)
+
             Toggle("", isOn: Binding(
                 get: { checked.contains(session.id) },
                 set: { isOn in
@@ -111,17 +129,34 @@ struct TranscriptImportSheet: View {
             ))
             .toggleStyle(.checkbox)
             .labelsHidden()
+            .tint(Palette.accent)
             .accessibilityLabel("Import \(session.title)")
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(session.title)
-                    .lineLimit(1)
-                Text("\(Format.relativeTime(session.updatedAt)) · \(session.turns.count) messages")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            Button {
+                previewID = session.id
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(session.title)
+                        .font(.system(size: 13, weight: isSelected ? .medium : .regular))
+                        .foregroundStyle(isSelected ? Palette.ink : Palette.secondaryInk)
+                        .lineLimit(1)
+                    Text("\(Format.relativeTime(session.updatedAt)) · \(session.turns.count) messages")
+                        .font(.system(size: 10, weight: .medium).monospacedDigit())
+                        .foregroundStyle(Palette.tertiaryInk)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Preview \(session.title)")
         }
-        .padding(.vertical, 2)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(isSelected ? Palette.sidebarSelection : (isHovering ? Palette.sidebarHover : Color.clear))
+        )
+        .onHover { hoveredID = $0 ? session.id : nil }
     }
 
     /// Reuses the chat's own turn views so the preview looks like the conversation will.

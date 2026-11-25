@@ -2,6 +2,11 @@ import Foundation
 import GantryCore
 
 extension AppModel {
+    func setTranscriptImportPreference(_ preference: TranscriptImportPreference) {
+        settings.transcriptImport = preference
+        scheduleSave()
+    }
+
     func setAutoSyncTranscripts(_ isOn: Bool, for projectID: UUID) {
         guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return }
         projects[index].autoSyncTranscripts = isOn
@@ -58,14 +63,18 @@ extension AppModel {
         }
     }
 
-    /// Imports new Claude Code conversations directly when the project auto-syncs;
-    /// otherwise opens the import window so the person picks them.
+    /// A project's auto-sync wins; otherwise the remembered choice decides,
+    /// and without one the import window lets the person pick.
     func offerTranscriptImport(for projectID: UUID) {
         guard let project = projects.first(where: { $0.id == projectID }) else { return }
+        let preference: TranscriptImportPreference = project.autoSyncTranscripts == true
+            ? .always
+            : settings.transcriptImport ?? .ask
+        guard preference != .never else { return }
         let urls = importableTranscriptURLs(for: projectID)
         guard !urls.isEmpty else { return }
 
-        guard project.autoSyncTranscripts == true else {
+        guard preference == .always else {
             transcriptImportProjectID = projectID
             return
         }

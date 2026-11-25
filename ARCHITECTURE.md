@@ -277,7 +277,7 @@ include `ChatSession.modelUsage`, `ChatSession.contextTokens`,
 `ChatSession.contextModelName`, `ChatSession.claudeReportedCostUSD`,
 `Project.pluginID`, `Project.devModPath`, `AppSettings.appearance`,
 `AppSettings.plugins`, `AppSettings.providers`,
-`AppSettings.favoriteMarketplaces`, `AppSettings.modsDirectory`, and
+`AppSettings.favoriteMarketplaces`, `AppSettings.modsDirectory`, `AppSettings.transcriptImport`, and
 `Project.autoSyncTranscripts`. State
 written by 0.1.0 must keep decoding.
 
@@ -507,8 +507,9 @@ message ID, since each content block repeats it) and priced with
 `ModelCostEstimator` at the message's date; the last response's prompt size
 seeds the context meter. `modelUsage` stays nil so the first resumed turn is
 priced per turn instead of against a baseline. `AppModel.offerTranscriptImport` runs when a project
-is opened and, for auto-sync projects, at launch. Unless
-`Project.autoSyncTranscripts` imports directly, it opens
+is opened and, for auto-sync projects, at launch. A project's
+`autoSyncTranscripts` imports directly; otherwise
+`AppSettings.transcriptImport` (always, never, or ask) decides, and ask opens
 `TranscriptImportSheet` (also in the project menu), which lists the sessions
 with a read-only preview and imports only the checked ones. Parsing runs off
 the main actor. Import is read-only on Claude Code's

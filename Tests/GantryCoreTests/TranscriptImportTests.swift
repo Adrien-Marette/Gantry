@@ -72,3 +72,9 @@ import Testing
     let project = try JSONDecoder().decode(Project.self, from: Data(json.utf8))
     #expect(project.autoSyncTranscripts == nil)
 }
+
+@Test func settingsWithoutTranscriptPreferenceDecode() throws {
+    let json = #"{"defaultModel":"automatic","defaultPermissionMode":"ask","showsInspector":true,"sidebarWidth":274}"#
+    let settings = try JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
+    #expect(settings.transcriptImport == nil)
+}

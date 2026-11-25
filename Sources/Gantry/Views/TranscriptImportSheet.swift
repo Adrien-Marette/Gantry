@@ -13,6 +13,7 @@ struct TranscriptImportSheet: View {
     @State private var isLoading = true
     @State private var checked: Set<UUID> = []
     @State private var previewID: UUID?
+    @State private var remembersChoice = false
     @State private var hoveredID: UUID?
 
     private var projectName: String {
@@ -198,12 +199,18 @@ struct TranscriptImportSheet: View {
                 .foregroundStyle(Palette.accent)
             }
             Spacer()
+            Toggle("Remember my choice", isOn: $remembersChoice)
+                .toggleStyle(.checkbox)
+                .font(Typo.caption)
+                .help("Import automatically next time, or never ask again if you choose Not Now")
             Button("Not Now") {
+                if remembersChoice { app.setTranscriptImportPreference(.never) }
                 dismiss()
             }
                 .keyboardShortcut(.cancelAction)
                 .buttonStyle(.glass)
             Button(checked.isEmpty ? "Import" : "Import \(checked.count)") {
+                if remembersChoice { app.setTranscriptImportPreference(.always) }
                 app.importSessions(sessions.filter { checked.contains($0.id) }, into: projectID)
                 dismiss()
             }

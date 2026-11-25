@@ -503,8 +503,10 @@ sidechain lines and command echoes are skipped. Each file becomes a
 `claudeStarted = true`, so the next prompt resumes it with `--resume`. Files
 whose ID already belongs to a Gantry session (including Gantry's own chats)
 are never imported twice. `AppModel.offerTranscriptImport` runs when a project
-is opened, asks via `NSAlert` unless `AppSettings.transcriptImport` remembers
-the answer, and parses off the main actor. Import is read-only on Claude Code's
+is opened. Unless `AppSettings.transcriptImport` remembers an answer, it opens
+`TranscriptImportSheet` (also in the project menu), which lists the sessions
+with a read-only preview and imports only the checked ones. Parsing runs off
+the main actor. Import is read-only on Claude Code's
 files.
 
 ## Conversation search

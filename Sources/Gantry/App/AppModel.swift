@@ -128,6 +128,7 @@ final class AppModel {
     /// True when the picker opened because a project was opened, the only case
     /// where remembering the answer makes sense.
     var transcriptImportOffersRemember = false
+    @ObservationIgnored var transcriptWatcher: TranscriptWatcher?
     var commandPalettePresented = false
     var reviewRequested = false
     var searchRequested = false

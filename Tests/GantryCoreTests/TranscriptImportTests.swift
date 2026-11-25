@@ -78,3 +78,36 @@ import Testing
     let settings = try JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
     #expect(settings.transcriptImport == nil)
 }
+
+@Test func watcherReportsNewTranscript() async throws {
+    let root = GantryTestTempRoot.url
+        .appendingPathComponent("watch-\(UUID().uuidString)")
+        .resolvingSymlinksInPath()
+    let folder = root.appendingPathComponent("-tmp-demo")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let seen = LockedURLs()
+    let watcher = try #require(TranscriptWatcher(
+        directory: root,
+        latency: 0.1,
+        queue: DispatchQueue(label: "watcher-test")
+    ) { seen.append($0) })
+
+    let file = folder.appendingPathComponent("\(UUID().uuidString.lowercased()).jsonl")
+    try "{}".write(to: file, atomically: false, encoding: .utf8)
+
+    for _ in 0..<50 where seen.isEmpty {
+        try await Task.sleep(for: .milliseconds(100))
+    }
+    withExtendedLifetime(watcher) {}
+    #expect(seen.contains { $0.lastPathComponent == file.lastPathComponent })
+}
+
+private final class LockedURLs: @unchecked Sendable {
+    private let lock = NSLock()
+    private var urls: [URL] = []
+    var isEmpty: Bool { lock.withLock { urls.isEmpty } }
+    func append(_ new: [URL]) { lock.withLock { urls += new } }
+    func contains(where predicate: (URL) -> Bool) -> Bool { lock.withLock { urls.contains(where: predicate) } }
+}

@@ -92,19 +92,28 @@ extension AppModel {
         }
     }
 
-    /// Imports new conversations for auto-sync projects now, then keeps polling
-    /// so chats started in the terminal appear while Gantry is open.
+    /// Catches up on what changed since the last launch, then lets FSEvents
+    /// report new or growing transcripts while Gantry is open.
     func startTranscriptAutoSync() {
-        Task { @MainActor in
-            while true {
-                for project in projects where project.autoSyncTranscripts == true {
-                    offerTranscriptImport(for: project.id)
-                    refreshImportedSessions(in: project.id)
+        for project in projects where project.autoSyncTranscripts == true {
+            syncTranscripts(in: project.id)
+        }
+        let directory = ClaudeTranscriptImporter.projectsDirectory()
+        transcriptWatcher = TranscriptWatcher(directory: directory) { [weak self] urls in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let folders = Set(urls.map { $0.deletingLastPathComponent().lastPathComponent })
+                for project in self.projects where project.autoSyncTranscripts == true
+                    && folders.contains(ClaudeTranscriptImporter.encodedName(forProjectPath: project.path)) {
+                    self.syncTranscripts(in: project.id)
                 }
-                // shortcut: polls a folder listing every 10 s; switch to FSEvents if many projects auto-sync.
-                try? await Task.sleep(for: .seconds(10))
             }
         }
+    }
+
+    private func syncTranscripts(in projectID: UUID) {
+        offerTranscriptImport(for: projectID)
+        refreshImportedSessions(in: projectID)
     }
 
     /// A terminal chat imported while it was still going keeps growing on disk;

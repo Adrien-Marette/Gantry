@@ -216,6 +216,7 @@ A change is done when:
 | New setting | `AppSettings` | Optional default, Settings UI, state compatibility test |
 | Review or commit behavior | `SessionReview.swift` / `GitCommit.swift` | Review tests, `ARCHITECTURE.md`, `SECURITY.md` |
 | Conversation search | `SessionSearch.swift` and `SessionSearchSheet.swift` | Search tests, `ARCHITECTURE.md`, `DESIGN.md` |
+| Sub-agent information | `ToolActivity.subagent*` and `InspectorView.swift` | Sub-agent tests, `README.md`, `DESIGN.md` |
 | Context meter | `ModelContextWindow.swift` and `ComposerView.swift` | Window tests, `ARCHITECTURE.md`, `README.md` |
 | Menu bar or background behavior | `GantryApp.swift` and `MenuBarView.swift` | `ARCHITECTURE.md`, `DESIGN.md`, accessibility labels |
 | Release | Version constant, `Info.plist`, MCP helper version | `README.md` "What's new" |

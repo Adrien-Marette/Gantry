@@ -541,6 +541,7 @@ These values are estimates, not billing data.
 | Mod creation | `ModScaffolder.swift`, `Views/Extensions/CreateModView.swift` |
 | Review and commit | `SessionReview.swift`, `GitCommit.swift`, `ReviewChangesSheet.swift` |
 | Conversation search | `SessionSearch.swift`, `SessionSearchSheet.swift` |
+| Sub-agent rows | `ToolActivity.subagent*`, `InspectorView.swift`, `SubagentDetailSheet.swift` |
 | Context meter | `ModelContextWindow.swift`, `ComposerView.swift` |
 | Menu bar and background behavior | `GantryApp.swift`, `MenuBarView.swift`, `AppModel` activity projections |
 | Graphify | `Graphify.swift`, `AppModel+PluginTools.swift`, `Views/Graphify/` |

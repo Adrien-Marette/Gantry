@@ -276,7 +276,16 @@ searched; the sidebar field remains a session filter.
 
 **Inspector** — content cards for session usage, estimated cost, token totals,
 and changed files. Keep figures tabular and labels quiet. **Review** in the
-Edited files card opens the review sheet.
+Edited files card opens the review sheet. A **Sub-agents** card appears when
+the session delegated work: one row per Task/Agent call with its type,
+description, quiet status, and duration; selecting a row opens the sub-agent
+detail sheet.
+
+**Sub-agent detail** — a content sheet, not glass. Status, duration, and start
+time sit in three small metric cards; the prompt and final report follow as
+Markdown in `surfaceCard` surfaces with a copy control. A running delegation
+shows a spinner and "Still running…"; a background delegation says its report
+is not captured instead of presenting the task id as content.
 
 **Review changes** — a content sheet, not glass, that gathers Claude's file
 edits for the session. A quiet file rail on the left shows relative paths,

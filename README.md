@@ -56,6 +56,7 @@ A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid G
 - **Sessions that survive restarts.** Projects, chats, provider choice, model choice, and permission mode are stored locally. The Claude Code session ID is resumed automatically after relaunch.
 - **Runs in the menu bar.** Closing the window hides Gantry but keeps Claude Code running. The menu bar item shows working sessions, finished turns, and requests that need you; its popover lets you allow or deny actions and answer Claude's questions without reopening the main window. **Open Gantry** restores the window; **Quit Gantry** or ⌘Q stops background work.
 - **Real tool activity.** Bash, Read, Write, Edit, Task, web, MCP, and other tool calls appear as compact, inspectable rows. Expanded views show commands, file diffs, output, todos, and structured results.
+- **Sub-agent visibility.** Every `Task`/`Agent` delegation appears in the inspector with its type, description, live status, and duration. Selecting one shows the prompt Claude gave the sub-agent and its final report. Background tasks are labelled because Claude Code reports their result later.
 - **Model-aware cost estimates.** Turn and session costs are calculated from the reported model's published token pricing and actual usage, instead of relying on Claude Code's cost assumptions. Unknown models fall back to the estimate Claude Code reports. These are estimates, not billing data.
 - **Search every conversation.** `⇧⌘F` searches session titles, prompts, answers, commands, and file paths across every project. Results show a snippet with the match highlighted; Return opens the session and scrolls to the matching turn. Queries ignore leading and trailing spaces and collapse runs of whitespace, so a path or phrase matches regardless of spacing. The sidebar field remains a quick filter for session names.
 - **Workbench details.** A sidebar for projects and sessions, a command palette (`⌘K`), streaming Markdown with code highlighting and tables, a session inspector, and a model-aware estimated usage view.
@@ -237,6 +238,7 @@ The **Extensions & Mods** page in the sidebar (or `⇧⌘E`) manages the Claude 
 - **Commit…** requires the project folder to be a Git working tree. If Git is unavailable or the folder is not a repository, the sheet shows Git's error and commits nothing.
 - Conversation search scans the loaded session history in memory; there is no on-disk index, so very large histories take longer to search.
 - Slash commands whose interface is terminal-only, such as prompt-bar color or focus mode, run through Claude Code but have no visual effect in Gantry. `/clear` starts a new Gantry session and `/rename` changes the session title.
+- **Sub-agent details cover the Task/Agent call**, not its internal tool calls: type, description, status, timing, prompt, and final report. Background sub-agents (`run_in_background`) report a task id instead of a report and are labelled as background.
 - Files edited via Bash are not listed in the inspector's edited-files list (only file-editing tools such as Edit, MultiEdit, Write, and NotebookEdit are).
 - Idle Claude Code processes stay alive while the app is open, which keeps follow-ups fast at the cost of memory.
 - If iCloud Keychain sync is unavailable (for example an ad-hoc local build), keys stay in the local login Keychain.
@@ -278,7 +280,7 @@ Sources/Gantry/
   App/                  App entry, observable state, providers, plugins, extensions, Graphify install/build state, MCP bridge lifecycle, conversation, review, search, and menu bar state
   Design/               Palette, type scale, surface and glass helpers, brand mark, shared controls
   Utilities/            Inline Markdown, syntax highlighting, tool and provider presentation
-  Views/                Welcome, sidebar, conversation, composer, permissions and questions, inspector, settings, provider editor, code-host settings, repository panel, extensions and mods, Graphify page, conversation search, review changes, menu bar extra
+  Views/                Welcome, sidebar, conversation, composer, permissions and questions, inspector, settings, provider editor, code-host settings, repository panel, extensions and mods, Graphify page, conversation search, sub-agent details, review changes, menu bar extra
 Sources/GantryPluginMCP/
   main.swift            Bundled stdio MCP server; forwards tool calls to the app
 Scripts/

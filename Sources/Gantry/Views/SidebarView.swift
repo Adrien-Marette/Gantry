@@ -325,6 +325,10 @@ struct SidebarView: View {
                     Button("Import Claude Code Conversations…") {
                         app.transcriptImportProjectID = project.id
                     }
+                    Toggle("Auto-sync Claude Code Conversations", isOn: Binding(
+                        get: { project.autoSyncTranscripts == true },
+                        set: { app.setAutoSyncTranscripts($0, for: project.id) }
+                    ))
                     Divider()
                     Button("Remove Project…", role: .destructive) {
                         pendingRemoveProject = project
@@ -358,6 +362,10 @@ struct SidebarView: View {
                 Button("Import Claude Code Conversations…") {
                     app.transcriptImportProjectID = project.id
                 }
+                Toggle("Auto-sync Claude Code Conversations", isOn: Binding(
+                    get: { project.autoSyncTranscripts == true },
+                    set: { app.setAutoSyncTranscripts($0, for: project.id) }
+                ))
                 Divider()
                 Button("Remove Project…", role: .destructive) {
                     pendingRemoveProject = project

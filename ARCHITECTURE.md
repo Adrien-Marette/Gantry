@@ -278,7 +278,7 @@ include `ChatSession.modelUsage`, `ChatSession.contextTokens`,
 `Project.pluginID`, `Project.devModPath`, `AppSettings.appearance`,
 `AppSettings.plugins`, `AppSettings.providers`,
 `AppSettings.favoriteMarketplaces`, `AppSettings.modsDirectory`, and
-`AppSettings.transcriptImport`. State
+`Project.autoSyncTranscripts`. State
 written by 0.1.0 must keep decoding.
 
 At launch, the app repairs what it can:
@@ -503,7 +503,8 @@ sidechain lines and command echoes are skipped. Each file becomes a
 `claudeStarted = true`, so the next prompt resumes it with `--resume`. Files
 whose ID already belongs to a Gantry session (including Gantry's own chats)
 are never imported twice. `AppModel.offerTranscriptImport` runs when a project
-is opened. Unless `AppSettings.transcriptImport` remembers an answer, it opens
+is opened and, for auto-sync projects, at launch. Unless
+`Project.autoSyncTranscripts` imports directly, it opens
 `TranscriptImportSheet` (also in the project menu), which lists the sessions
 with a read-only preview and imports only the checked ones. Parsing runs off
 the main actor. Import is read-only on Claude Code's

@@ -1,23 +1,5 @@
 import Foundation
 
-/// Whether Gantry offers to import a project's existing Claude Code
-/// conversations when the project is opened.
-public enum TranscriptImportPreference: String, CaseIterable, Codable, Identifiable, Sendable {
-    case ask
-    case always
-    case never
-
-    public var id: String { rawValue }
-
-    public var title: String {
-        switch self {
-        case .ask: return "Ask"
-        case .always: return "Always import"
-        case .never: return "Never import"
-        }
-    }
-}
-
 /// Reads the JSONL transcripts Claude Code keeps under
 /// `~/.claude/projects/<encoded-path>/` and turns them into Gantry sessions.
 /// Imported sessions keep Claude Code's session ID so they continue with

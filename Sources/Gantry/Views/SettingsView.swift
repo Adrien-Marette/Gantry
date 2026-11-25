@@ -106,34 +106,6 @@ private struct GeneralSettingsView: View {
                         .frame(width: 150)
                     }
 
-                    settingsDivider
-
-                    settingsRow("Remember import choice") {
-                        Toggle("", isOn: Binding(
-                            get: { (app.settings.transcriptImport ?? .ask) != .ask },
-                            set: { app.setTranscriptImportPreference($0 ? .always : .ask) }
-                        ))
-                        .toggleStyle(.switch)
-                        .labelsHidden()
-                        .accessibilityLabel("Remember whether to import existing Claude Code conversations")
-                    }
-
-                    if let remembered = app.settings.transcriptImport, remembered != .ask {
-                        settingsDivider
-
-                        settingsRow("Claude Code history") {
-                            Picker("", selection: Binding(
-                                get: { remembered },
-                                set: { app.setTranscriptImportPreference($0) }
-                            )) {
-                                Text(TranscriptImportPreference.always.title).tag(TranscriptImportPreference.always)
-                                Text(TranscriptImportPreference.never.title).tag(TranscriptImportPreference.never)
-                            }
-                            .labelsHidden()
-                            .frame(width: 150)
-                            .accessibilityLabel("Import existing Claude Code conversations when opening a project")
-                        }
-                    }
                 }
 
                 Text("Existing sessions keep their own model and permission mode.")

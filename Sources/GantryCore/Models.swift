@@ -587,6 +587,9 @@ public struct Project: Codable, Hashable, Identifiable, Sendable {
     /// Optional so state written before mod authoring decodes unchanged.
     /// When set to this project's folder, its chats launch with `--plugin-dir`.
     public var devModPath: String?
+    /// Optional so older state decodes; when true, new Claude Code
+    /// conversations for this folder are imported without asking.
+    public var autoSyncTranscripts: Bool?
 
     public init(
         id: UUID = UUID(),
@@ -596,7 +599,8 @@ public struct Project: Codable, Hashable, Identifiable, Sendable {
         lastOpenedAt: Date = .now,
         sessions: [ChatSession] = [],
         pluginID: UUID? = nil,
-        devModPath: String? = nil
+        devModPath: String? = nil,
+        autoSyncTranscripts: Bool? = nil
     ) {
         self.id = id
         self.path = path
@@ -606,6 +610,7 @@ public struct Project: Codable, Hashable, Identifiable, Sendable {
         self.sessions = sessions
         self.pluginID = pluginID
         self.devModPath = devModPath
+        self.autoSyncTranscripts = autoSyncTranscripts
     }
 
     public var url: URL {
@@ -650,8 +655,6 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var favoriteMarketplaces: [FavoriteMarketplace]?
     /// Last folder used by the Create Mod wizard.
     public var modsDirectory: String?
-    /// Optional so older state decodes; nil means ask.
-    public var transcriptImport: TranscriptImportPreference?
 
     public init(
         defaultModel: ModelChoice = .automatic,
@@ -664,8 +667,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         providers: [AIProvider]? = nil,
         defaultProviderID: UUID? = nil,
         favoriteMarketplaces: [FavoriteMarketplace]? = nil,
-        modsDirectory: String? = nil,
-        transcriptImport: TranscriptImportPreference? = nil
+        modsDirectory: String? = nil
     ) {
         self.defaultModel = defaultModel
         self.defaultPermissionMode = defaultPermissionMode
@@ -678,7 +680,6 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.defaultProviderID = defaultProviderID
         self.favoriteMarketplaces = favoriteMarketplaces
         self.modsDirectory = modsDirectory
-        self.transcriptImport = transcriptImport
     }
 }
 

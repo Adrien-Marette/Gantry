@@ -58,8 +58,8 @@ import Testing
     #expect(ClaudeTranscriptImporter.projectsDirectory(environment: ["CLAUDE_CONFIG_DIR": "/tmp/cc"], home: home).path == "/tmp/cc/projects")
 }
 
-@Test func settingsWithoutTranscriptPreferenceDecode() throws {
-    let json = #"{"defaultModel":"automatic","defaultPermissionMode":"ask","showsInspector":true,"sidebarWidth":274}"#
-    let settings = try JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
-    #expect(settings.transcriptImport == nil)
+@Test func projectWithoutAutoSyncDecodes() throws {
+    let json = #"{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","path":"/tmp/p","name":"p","createdAt":0,"lastOpenedAt":0,"sessions":[]}"#
+    let project = try JSONDecoder().decode(Project.self, from: Data(json.utf8))
+    #expect(project.autoSyncTranscripts == nil)
 }

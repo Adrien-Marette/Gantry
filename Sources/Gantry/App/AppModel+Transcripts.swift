@@ -2,9 +2,11 @@ import Foundation
 import GantryCore
 
 extension AppModel {
-    func setTranscriptImportPreference(_ preference: TranscriptImportPreference) {
-        settings.transcriptImport = preference
+    func setAutoSyncTranscripts(_ isOn: Bool, for projectID: UUID) {
+        guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return }
+        projects[index].autoSyncTranscripts = isOn
         scheduleSave()
+        if isOn { offerTranscriptImport(for: projectID) }
     }
 
     /// Transcripts of this project that no Gantry session (including Gantry's own) owns yet.
@@ -56,14 +58,14 @@ extension AppModel {
         }
     }
 
-    /// Offers to bring in Claude Code conversations this project already has on disk.
+    /// Imports new Claude Code conversations directly when the project auto-syncs;
+    /// otherwise opens the import window so the person picks them.
     func offerTranscriptImport(for projectID: UUID) {
-        let preference = settings.transcriptImport ?? .ask
-        guard preference != .never else { return }
+        guard let project = projects.first(where: { $0.id == projectID }) else { return }
         let urls = importableTranscriptURLs(for: projectID)
         guard !urls.isEmpty else { return }
 
-        if preference == .ask {
+        guard project.autoSyncTranscripts == true else {
             transcriptImportProjectID = projectID
             return
         }
@@ -71,6 +73,13 @@ extension AppModel {
         transcriptImportStatus = ("Importing \(urls.count) conversation\(urls.count == 1 ? "" : "s")…", true)
         Task { @MainActor in
             importSessions(await loadImportableSessions(for: projectID), into: projectID)
+        }
+    }
+
+    /// Picks up conversations started in the terminal since the last launch.
+    func syncTranscriptsAtLaunch() {
+        for project in projects where project.autoSyncTranscripts == true {
+            offerTranscriptImport(for: project.id)
         }
     }
 }

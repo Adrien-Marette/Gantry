@@ -289,6 +289,7 @@ final class AppModel {
         guard !started else { return }
         started = true
         resolveClaude()
+        syncTranscriptsAtLaunch()
     }
 
     func shutdown() {

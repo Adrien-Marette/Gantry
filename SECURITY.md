@@ -39,6 +39,7 @@ never answers a permission request on your behalf.
 | Gantry app (`Gantry`) | Runs as you, without App Sandbox. Reads/writes chosen projects and its own state, and reads Keychain items it stored. |
 | Claude Code child (`claude`) | Runs as you in the project folder. Receives the selected provider's credential through its environment, in addition to your normal environment. Enforces permissions. |
 | MCP helper (`Gantry-plugins`) | Runs as a child of Claude Code. Gantry gives it a socket path and random bridge token; it never receives a code-host token. |
+| Graphify (`graphify`, `graphify-mcp`) | Optional local tool installed by you. Serves a project's `graphify-out/graph.json`; receives no Gantry secret. |
 | Code-host APIs | Receive the stored token as an authorization header and the requested repository action. |
 | Installed extensions and mods | Third-party code that runs with your permissions inside Claude Code. |
 | macOS Keychain | Stores provider keys and code-host tokens. Items are accessible when the login keychain is unlocked. |
@@ -117,9 +118,10 @@ paused until answered.
 ### Prompt attachments
 
 Files and folders attached in the composer are sent to Claude as absolute paths
-inside the user's prompt. Gantry does not read, copy, upload, or log their
-contents. Claude still needs its own Read permission for each path, so the
-permission cards and deny path remain authoritative.
+inside the user's prompt. Gantry does not read, copy, upload, log, or persist
+their contents; the staged attachment list is discarded after sending. Claude
+still needs its own Read permission for each path, so the permission cards and
+deny path remain authoritative.
 
 ### Review and commit
 
@@ -128,9 +130,11 @@ user message and goes through Claude Code's permission model. **Commit…** is
 explicit, lists every file and the message before running, and never happens
 automatically.
 
-- Only paths inside the project are committed; paths outside it are shown as
-  excluded and never passed to Git.
-- The commit uses a pathspec, so unrelated staged work is left out.
+- Only paths inside the project are committed; paths outside it, and reviewed
+  paths that have since become directories, are shown as excluded and never
+  passed to Git.
+- The commit uses a literal pathspec for each reviewed file, so unrelated
+  staged work is left out and file names with glob characters stay exact.
 - Gantry never pushes, amends, force-updates, or bypasses hooks or signing
   (`--no-verify` and `--no-gpg-sign` are never passed).
 - Git output is stripped of ANSI before it is shown.
@@ -150,6 +154,26 @@ terminal.
 Only user-scope plugins are managed. Project and local scopes are displayed
 read-only because their state belongs to a project. A project can load a mod
 with `--plugin-dir` only when that mod folder is the project folder itself.
+
+## Graphify
+
+Graphify is optional third-party software. Gantry detects an install; it never
+bundles it or installs it silently.
+
+- The Graphify page's **Install** action runs
+  `uv tool install "graphifyy[mcp]"` only after a confirmation sheet shows the
+  exact command. Without `uv`, it shows the command for the user to run.
+- Install, update, and query commands run without a shell, with argument
+  arrays. They inherit the user's environment plus `NO_COLOR`; no Gantry secret
+  is added.
+- `graphify update` reads project files and writes `graphify-out/` inside the
+  project. It is local and code-only; semantic extraction for docs, PDFs,
+  images, and media remains the user's `/graphify` workflow in Claude Code.
+- When `graphify-out/graph.json` exists and `graphify-mcp` is installed, Gantry
+  adds `graphify-mcp <absolute graph path>` to the session's MCP config. The
+  server receives no token or credential.
+- **Open Graph** opens the generated `graph.html` in the default browser at the
+  user's request. Gantry does not execute or embed it.
 
 ## MCP bridge
 
@@ -191,9 +215,11 @@ not a defense against malware running as the same user.
 
 `state.json` contains conversation text, tool inputs and results, file paths,
 project paths, and account display names. It does not contain API keys or
-code-host tokens, but it can contain sensitive project information. Logs can
-contain project paths and CLI diagnostics. Treat both as private data and
-redact them before sharing screenshots or reports.
+code-host tokens, but it can contain sensitive project information. Composer
+attachments are transient: the staged list is not saved, though absolute paths
+written into a sent prompt become part of the conversation. Logs can contain
+project paths and CLI diagnostics. Treat both as private data and redact them
+before sharing screenshots or reports.
 
 An unreadable state file is copied to `state-unreadable-<timestamp>.json`
 before it can be overwritten, so a recovery attempt does not destroy the
@@ -238,8 +264,10 @@ Changes that touch any of these areas need extra review:
 - `ClaudeRuntime.swift`, `ClaudeWire.swift`, `ClaudeEvents.swift`
 - `PluginToolBridge.swift`, `PluginTools.swift`,
   `AppModel+PluginTools.swift`, `GantryPluginMCP/main.swift`
+- `Graphify.swift`, `Views/Graphify/`
 - `ClaudePluginManager.swift`, `ModScaffolder.swift`
 - `CodeHostClient.swift` and the host backends
+- `SessionReview.swift`, `GitCommit.swift`, and the Review changes sheet
 - the permission flow in `AppModel+Conversation.swift`
 
 Rules:
@@ -254,7 +282,9 @@ Rules:
 6. Add tests with fake tokens and local fixtures. Do not call real services or
    the user's Keychain in the default suite.
 7. Do not broaden the bridge's scope beyond one repository and one plugin.
-8. If a change alters what a trust dialog or permission card promises, update
+8. Never install or update a third-party tool without showing the exact command
+   and getting an explicit confirmation.
+9. If a change alters what a trust dialog or permission card promises, update
    the UI copy and this document together.
 
 ## User hardening checklist

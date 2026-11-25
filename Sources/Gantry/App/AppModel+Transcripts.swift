@@ -130,19 +130,31 @@ extension AppModel {
             // Size, not date: a reply written right after the prompt must not be missed.
             guard let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey]),
                   let size = values.fileSize,
-                  size != importedTranscriptSizes[session.id],
-                  let fresh = ClaudeTranscriptImporter.session(fromTranscript: url) else { continue }
+                  size != importedTranscriptSizes[session.id] else { continue }
+            // Claimed before parsing so overlapping FSEvents batches do not parse the same size twice.
             importedTranscriptSizes[session.id] = size
-            mutateSession(session.id) { current in
-                current.turns = fresh.turns
-                current.updatedAt = values.contentModificationDate ?? fresh.updatedAt
-                current.totalCostUSD = fresh.totalCostUSD
-                current.contextTokens = fresh.contextTokens
-                current.contextModelName = fresh.contextModelName
-                current.actualModelName = fresh.actualModelName ?? current.actualModelName
-                if !current.hasCustomTitle { current.title = fresh.title }
+            let sessionID = session.id
+            Task { @MainActor in
+                let fresh = await Task.detached { ClaudeTranscriptImporter.session(fromTranscript: url) }.value
+                // State may have changed while parsing: a newer size, a deletion, or a turn started here.
+                guard importedTranscriptSizes[sessionID] == size,
+                      locateSession(sessionID) != nil,
+                      activities[sessionID]?.isRunning != true,
+                      let fresh else {
+                    if importedTranscriptSizes[sessionID] == size { importedTranscriptSizes[sessionID] = nil }
+                    return
+                }
+                mutateSession(sessionID) { current in
+                    current.turns = fresh.turns
+                    current.updatedAt = values.contentModificationDate ?? fresh.updatedAt
+                    current.totalCostUSD = fresh.totalCostUSD
+                    current.contextTokens = fresh.contextTokens
+                    current.contextModelName = fresh.contextModelName
+                    current.actualModelName = fresh.actualModelName ?? current.actualModelName
+                    if !current.hasCustomTitle { current.title = fresh.title }
+                }
+                scheduleSave()
             }
-            scheduleSave()
         }
     }
 }

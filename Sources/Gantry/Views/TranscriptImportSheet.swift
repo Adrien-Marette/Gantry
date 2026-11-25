@@ -23,13 +23,12 @@ struct TranscriptImportSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Hairline()
             content
-            Hairline()
             footer
         }
         .frame(width: 980, height: 640)
-        .background(CanvasBackground())
+        // The whole window is one Liquid Glass surface; content sits on a flat card inside it.
+        .glassEffect(.regular, in: Rectangle())
         .task {
             sessions = await app.loadImportableSessions(for: projectID)
             checked = Set(sessions.map(\.id))
@@ -84,7 +83,6 @@ struct TranscriptImportSheet: View {
             HStack(spacing: 0) {
                 list
                     .frame(width: 300)
-                Hairline(axis: .vertical)
                 preview
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -94,9 +92,6 @@ struct TranscriptImportSheet: View {
     /// Styled like the main sidebar: Liquid Glass with an accent rail on the previewed row.
     private var list: some View {
         ZStack {
-            Color.clear
-                .glassEffect(.regular, in: Rectangle())
-
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 2) {
                     SectionLabel(title: "\(sessions.count) conversations")
@@ -183,7 +178,8 @@ struct TranscriptImportSheet: View {
                 .padding(24)
             }
             .id(session.id)
-            .background(Palette.canvas)
+            .surfaceCard(radius: Radius.panel)
+            .padding([.top, .trailing, .bottom], 4)
         } else {
             Text("Select a conversation to preview it.")
                 .font(Typo.caption)
@@ -212,6 +208,7 @@ struct TranscriptImportSheet: View {
                 dismiss()
             }
                 .keyboardShortcut(.cancelAction)
+                .buttonStyle(.glass)
             Button(checked.isEmpty ? "Import" : "Import \(checked.count)") {
                 if remembersChoice { app.setTranscriptImportPreference(.always) }
                 app.importSessions(sessions.filter { checked.contains($0.id) }, into: projectID)
@@ -219,6 +216,7 @@ struct TranscriptImportSheet: View {
             }
             .keyboardShortcut(.defaultAction)
             .buttonStyle(.glassProminent)
+            .tint(Palette.accent)
             .disabled(checked.isEmpty)
         }
         .padding(.horizontal, 20)

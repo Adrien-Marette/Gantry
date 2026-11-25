@@ -123,6 +123,8 @@ final class AppModel {
     var loadError: String?
     /// Progress of a Claude Code history import; `isWorking` shows the spinner.
     var transcriptImportStatus: (text: String, isWorking: Bool)?
+    /// Project whose import picker is open.
+    var transcriptImportProjectID: UUID?
     var commandPalettePresented = false
     var reviewRequested = false
     var searchRequested = false

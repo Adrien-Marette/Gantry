@@ -322,6 +322,9 @@ struct SidebarView: View {
                     Button("Show in Finder") {
                         NSWorkspace.shared.activateFileViewerSelecting([project.url])
                     }
+                    Button("Import Claude Code Conversations…") {
+                        app.transcriptImportProjectID = project.id
+                    }
                     Divider()
                     Button("Remove Project…", role: .destructive) {
                         pendingRemoveProject = project
@@ -351,6 +354,9 @@ struct SidebarView: View {
                 Button("New Session") { _ = app.newSession(in: project.id) }
                 Button("Show in Finder") {
                     NSWorkspace.shared.activateFileViewerSelecting([project.url])
+                }
+                Button("Import Claude Code Conversations…") {
+                    app.transcriptImportProjectID = project.id
                 }
                 Divider()
                 Button("Remove Project…", role: .destructive) {

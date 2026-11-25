@@ -63,6 +63,14 @@ struct RootView: View {
                 }
             }
         }
+        .sheet(isPresented: Binding(
+            get: { app.transcriptImportProjectID != nil },
+            set: { if !$0 { app.transcriptImportProjectID = nil } }
+        )) {
+            if let projectID = app.transcriptImportProjectID {
+                TranscriptImportSheet(projectID: projectID)
+            }
+        }
         .sheet(isPresented: $showingSearch) {
             SessionSearchSheet()
         }

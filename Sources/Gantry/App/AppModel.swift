@@ -112,7 +112,7 @@ struct SessionActivityItem: Identifiable {
 @MainActor
 @Observable
 final class AppModel {
-    static let appVersion = "0.4.0"
+    static let appVersion = "0.4.1"
 
     var projects: [Project]
     var selectedProjectID: UUID?

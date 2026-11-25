@@ -2,7 +2,7 @@
 
 A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid Glass. It runs Claude Code in the background and keeps the conversation, project context, streaming output, tool permissions, and AI provider choice in one calm window instead of a terminal.
 
-**Gantry 0.4.0** adds a context meter, file and folder attachments, Review & Ship, conversation-wide search, and a menu bar that keeps Claude working when the window is closed.
+**Gantry 0.4.1** adds optional Graphify knowledge graphs and an inspector view of sub-agent runs, with a round of review fixes.
 
 ![Gantry welcome](docs/screenshot-welcome.jpg)
 
@@ -11,6 +11,12 @@ A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid G
 ![Claude Code permission card](docs/screenshot-permission.jpg)
 
 ![AI providers](docs/screenshot-providers.jpg)
+
+## What's new in 0.4.1
+
+- **Graphify knowledge graphs.** An optional local Graphify integration: the **Graphify** page builds or refreshes a project's code graph, opens the generated `graph.html`, and runs queries. Chats whose project has a built graph get the `graphify-mcp` server automatically, with no manual MCP setup. Installing Graphify requires an exact `uv` command and an explicit confirmation.
+- **Sub-agent runs.** The inspector now lists every `Task`/`Agent` delegation with its type, description, live status, and duration. Selecting one shows the prompt Claude gave the sub-agent and its final report; background delegations are labelled.
+- **Review fixes.** The context meter is sized from the model that produced the tokens, with unknown custom models assumed to have a 1M window. Commit pathspecs are literal per reviewed file and skip paths that became directories; conversation search normalizes repeated whitespace; number questions validate inline. `⌘0` reopens Gantry, and `CLAUDE_CODE_PATH` is honored alongside the existing override.
 
 ## What's new in 0.4.0
 

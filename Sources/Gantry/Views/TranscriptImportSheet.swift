@@ -75,7 +75,7 @@ struct TranscriptImportSheet: View {
                 Text("Nothing to import")
                     .font(Typo.bodyMedium)
                     .foregroundStyle(Palette.ink)
-                Text("Every Claude Code conversation for this project is already in Gantry.")
+                Text("No new Claude Code conversations were found for this project.")
                     .font(Typo.caption)
                     .foregroundStyle(Palette.tertiaryInk)
             }

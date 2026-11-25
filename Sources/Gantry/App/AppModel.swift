@@ -129,6 +129,8 @@ final class AppModel {
     /// where remembering the answer makes sense.
     var transcriptImportOffersRemember = false
     @ObservationIgnored var transcriptWatcher: TranscriptWatcher?
+    /// Byte size of each imported session's transcript when it was last read.
+    @ObservationIgnored var importedTranscriptSizes: [UUID: Int] = [:]
     var commandPalettePresented = false
     var reviewRequested = false
     var searchRequested = false

@@ -117,7 +117,7 @@ extension AppModel {
     }
 
     /// A terminal chat imported while it was still going keeps growing on disk;
-    /// reload it when its file is newer. Gantry-born sessions (id equals the
+    /// reload it whenever its size differs from what was last read. Gantry-born sessions (id equals the
     /// Claude session ID) and running ones are left alone.
     func refreshImportedSessions(in projectID: UUID) {
         guard let project = projects.first(where: { $0.id == projectID }) else { return }
@@ -127,14 +127,15 @@ extension AppModel {
                 forProjectPath: project.path,
                 sessionID: session.claudeSessionID
             )
-            guard let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?
-                    .contentModificationDate,
-                  // Gantry's own resumed turns also touch the file; the margin skips those.
-                  modified > session.updatedAt.addingTimeInterval(5),
+            // Size, not date: a reply written right after the prompt must not be missed.
+            guard let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey]),
+                  let size = values.fileSize,
+                  size != importedTranscriptSizes[session.id],
                   let fresh = ClaudeTranscriptImporter.session(fromTranscript: url) else { continue }
+            importedTranscriptSizes[session.id] = size
             mutateSession(session.id) { current in
                 current.turns = fresh.turns
-                current.updatedAt = modified
+                current.updatedAt = values.contentModificationDate ?? fresh.updatedAt
                 current.totalCostUSD = fresh.totalCostUSD
                 current.contextTokens = fresh.contextTokens
                 current.contextModelName = fresh.contextModelName

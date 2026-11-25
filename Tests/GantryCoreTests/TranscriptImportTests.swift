@@ -111,3 +111,13 @@ private final class LockedURLs: @unchecked Sendable {
     func append(_ new: [URL]) { lock.withLock { urls += new } }
     func contains(where predicate: (URL) -> Bool) -> Bool { lock.withLock { urls.contains(where: predicate) } }
 }
+
+@Test func keepsMarkupPromptsButSkipsCommandEchoes() {
+    let lines = [
+        #"{"type":"user","message":{"role":"user","content":"<command-name>/clear</command-name>"}}"#,
+        #"{"type":"user","message":{"role":"user","content":"<local-command-stdout>ok</local-command-stdout>"}}"#,
+        #"{"type":"user","message":{"role":"user","content":"<div>why is this not centered?</div>"}}"#,
+    ]
+    let turns = ClaudeTranscriptImporter.turns(fromTranscript: lines.joined(separator: "\n")).turns
+    #expect(turns.map(\.textContent) == ["<div>why is this not centered?</div>"])
+}

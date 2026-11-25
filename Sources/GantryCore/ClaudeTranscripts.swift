@@ -199,10 +199,18 @@ public enum ClaudeTranscriptImporter {
                 .joined(separator: "\n\n")
         }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Slash-command and local-command echoes are wrapped in XML-like tags.
-        guard !trimmed.isEmpty, !trimmed.hasPrefix("<") else { return nil }
+        guard !trimmed.isEmpty,
+              !commandEchoTags.contains(where: { trimmed.hasPrefix("<\($0)>") }) else { return nil }
         return trimmed
     }
+
+    /// Tags Claude Code wraps slash-command and local-command echoes in. Other
+    /// markup, such as pasted HTML, is a real prompt.
+    private static let commandEchoTags = [
+        "command-name", "command-message", "command-args",
+        "local-command-stdout", "local-command-stderr", "local-command-caveat",
+        "bash-input", "bash-stdout", "bash-stderr",
+    ]
 
     private static func apply(_ results: [ClaudeToolResult], to turns: inout [ConversationTurn]) {
         for result in results {

@@ -48,8 +48,8 @@ public enum GitCommitError: LocalizedError, Hashable, Sendable {
     }
 }
 
-/// The files Gantry will commit. Only paths inside the project are included;
-/// files outside it are reported separately instead of being silently skipped.
+/// The files Gantry will commit. Directories and paths outside the project
+/// are reported separately instead of being silently skipped.
 public struct GitCommitPlan: Hashable, Sendable {
     public var paths: [String]
     public var excludedDisplayPaths: [String]
@@ -111,9 +111,8 @@ public struct GitCommitService: Sendable {
             }
             // A reviewed file that has since become a directory would make a
             // pathspec commit sweep in unreviewed descendants.
-            var isDirectory: ObjCBool = false
-            if FileManager.default.fileExists(atPath: standardized, isDirectory: &isDirectory),
-               isDirectory.boolValue {
+            let attributes = try? FileManager.default.attributesOfItem(atPath: standardized)
+            if attributes?[.type] as? FileAttributeType == .typeDirectory {
                 excluded.append(file.displayPath)
                 continue
             }

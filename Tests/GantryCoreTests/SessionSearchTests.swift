@@ -124,6 +124,16 @@ private func bashTool(id: String, command: String) -> ToolActivity {
     #expect(hits[0].kind == .title)
 }
 
+@Test func titleSearchNormalizesRepeatedWhitespace() {
+    let session = ChatSession(title: "Release  notes")
+    let project = Project(path: "/tmp/project", name: "Project", sessions: [session])
+
+    let hits = SessionSearch.search(query: "Release  notes", projects: [project])
+
+    #expect(hits.map(\.kind) == [.title])
+    #expect(hits.map(\.sessionTitle) == ["Release  notes"])
+}
+
 @Test func searchNormalizesRepeatedWhitespace() {
     let turn = ConversationTurn(
         role: .user,

@@ -162,28 +162,33 @@ struct SubagentDetailSheet: View {
     }
 
     private func reportText(_ tool: ToolActivity) -> String? {
-        guard !tool.isBackgroundSubagent,
-              let text = tool.resultText,
+        if tool.isBackgroundSubagent {
+            switch tool.status {
+            case .running, .awaitingPermission, .completed:
+                return nil
+            case .failed, .denied, .interrupted:
+                break
+            }
+        }
+        guard let text = tool.resultText,
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { return nil }
         return text
     }
 
     private func emptyReportText(_ tool: ToolActivity) -> String {
-        if tool.isBackgroundSubagent {
-            return "This is a background task. Claude Code reports its final result later, and Gantry cannot capture it yet."
-        }
         switch tool.status {
-        case .running, .awaitingPermission:
-            return "Still running…"
+        case .running, .awaitingPermission, .completed:
+            if tool.isBackgroundSubagent {
+                return "This is a background task. Claude Code reports its final result later, and Gantry cannot capture it yet."
+            }
+            return tool.status == .completed ? "No report was returned." : "Still running…"
         case .denied:
             return "The sub-agent was not allowed to run."
         case .failed:
             return "The sub-agent failed without returning a report."
         case .interrupted:
             return "The sub-agent was interrupted before returning a report."
-        case .completed:
-            return "No report was returned."
         }
     }
 

@@ -620,9 +620,9 @@ extension AppModel {
         // Each assistant response reports the prompt that produced it. The
         // newest one is the best snapshot of how full the context window is.
         let contextChanged: Bool
-        if let usage = message.usage,
-           usage.contextTokens > 0,
-           usage.contextTokens != session.contextTokens {
+        if let usage = message.usage, usage.contextTokens > 0 {
+            let previousTokens = session.contextTokens
+            let previousModelName = session.contextModelName
             session.contextTokens = usage.contextTokens
             if let model = message.model,
                !model.isEmpty,
@@ -630,18 +630,15 @@ extension AppModel {
                 // Context belongs to the model that produced this response.
                 // Keep a resolved `[1m]` spelling for the same model, but do
                 // not let a model switch leave a stale context window behind.
-                let existing = session.contextModelName
-                let existingBase = existing?
-                    .replacingOccurrences(of: "[1m]", with: "", options: .caseInsensitive)
-                let keepsResolvedName = existing?.lowercased().contains("[1m]") == true
-                    && existingBase?.caseInsensitiveCompare(model) == .orderedSame
-                if !keepsResolvedName {
+                let resolvedModel = model.lowercased().hasSuffix("[1m]") ? model : model + "[1m]"
+                if previousModelName?.caseInsensitiveCompare(resolvedModel) != .orderedSame {
                     session.contextModelName = model
                 }
             } else if session.contextModelName == nil {
                 session.contextModelName = session.actualModelName
             }
-            contextChanged = true
+            contextChanged = session.contextTokens != previousTokens
+                || session.contextModelName != previousModelName
         } else {
             contextChanged = false
         }

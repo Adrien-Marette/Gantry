@@ -262,6 +262,24 @@ private func reviewedFile(_ path: String, displayPath: String) -> ReviewedFile {
     #expect(plan.excludedDisplayPaths == ["Change.swift"])
 }
 
+@Test func commitPlanKeepsSymbolicLinkToDirectory() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("Gantry-commit-\(UUID().uuidString)", isDirectory: true)
+    let target = root.appendingPathComponent("Target", isDirectory: true)
+    try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let link = root.appendingPathComponent("Link")
+    try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+    let file = reviewedFile(link.path, displayPath: "Link")
+
+    let plan = GitCommitService.plan(files: [file], projectPath: root.path)
+
+    #expect(plan.paths == ["Link"])
+    #expect(plan.excludedDisplayPaths.isEmpty)
+    #expect(plan.includedFileIDs == [file.id])
+}
+
 private final class FakeGitRunner: GitCommandRunning, @unchecked Sendable {
     private let lock = NSLock()
     private var results: [GitCommandResult]

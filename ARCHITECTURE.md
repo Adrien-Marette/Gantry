@@ -426,9 +426,17 @@ not install it without confirmation, and never talks to Graphify Cloud.
   or refreshes the code graph with `graphify update <project>`; opens
   `graphify-out/graph.html`; and runs `graphify query "<question>"`. A missing
   install offers `uv tool install "graphifyy[mcp]"` in a confirmation sheet.
-- After a successful install or build, `invalidateRuntimes(projectID:)` recycles
-  idle chats and marks working chats stale, so the MCP server appears at the
-  next start. The graph server reloads `graph.json` when the file changes.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:e806a21c9f013a047919968b77fd84b9dcbb58fcb595471b6c7369c985a387bf -->
+
+- A successful install invalidates runtimes across all projects. A successful
+  graph build invalidates only the project whose graph was built. In either
+  case, idle chats recycle and working chats are marked stale so the MCP
+  server appears at the next start. The graph server reloads `graph.json`
+  when the file changes.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 Graphify's semantic extraction for documentation, PDFs, images, and media is
 not run from the page; that remains Graphify's `/graphify` skill inside a chat.

@@ -23,6 +23,7 @@ final class GraphifyModel {
     private(set) var projectName = ""
 
     @ObservationIgnored private let app: AppModel
+    @ObservationIgnored private var statusLoadGeneration: UInt = 0
 
     init(app: AppModel) {
         self.app = app
@@ -72,6 +73,8 @@ final class GraphifyModel {
 
     func refresh(project: Project) async {
         if projectID != project.id {
+            status = nil
+            cliVersion = nil
             actionOutput = nil
             actionError = nil
             query = ""
@@ -111,6 +114,8 @@ final class GraphifyModel {
     }
 
     private func loadStatus(at url: URL) async {
+        statusLoadGeneration &+= 1
+        let generation = statusLoadGeneration
         let status = GraphifyStatus.read(projectURL: url)
         var version: String?
         if let cliURL = status.cliURL,
@@ -126,8 +131,8 @@ final class GraphifyModel {
                 .first
                 .map(String.init)
         }
-        // A project switch may have landed while the version ran.
-        guard projectURL == url else { return }
+        // The project or the latest status request may have changed.
+        guard projectURL == url, statusLoadGeneration == generation else { return }
         self.status = status
         cliVersion = version
     }
@@ -154,6 +159,9 @@ final class GraphifyModel {
                 workingDirectory: startedProject,
                 timeout: 600
             )
+            if !result.timedOut, result.exitCode == 0 {
+                app.invalidateRuntimes()
+            }
             guard projectURL == startedProject else { return }
             actionOutput = result.output
             if result.timedOut {
@@ -162,7 +170,6 @@ final class GraphifyModel {
                 actionError = "uv could not install Graphify (exit \(result.exitCode))."
             } else {
                 await loadStatus()
-                app.invalidateRuntimes(projectID: projectID)
             }
         } catch {
             actionError = error.localizedDescription
@@ -170,7 +177,7 @@ final class GraphifyModel {
     }
 
     func buildGraph() async {
-        guard let cliURL = status?.cliURL, let projectURL, !isBusy else { return }
+        guard let cliURL = status?.cliURL, let projectURL, let projectID, !isBusy else { return }
 
         let startedProject = projectURL
         isBuilding = true
@@ -185,6 +192,9 @@ final class GraphifyModel {
                 workingDirectory: startedProject,
                 timeout: 900
             )
+            if !result.timedOut, result.exitCode == 0 {
+                app.invalidateRuntimes(projectID: projectID)
+            }
             guard projectURL == startedProject else { return }
             actionOutput = result.output
             if result.timedOut {
@@ -193,7 +203,6 @@ final class GraphifyModel {
                 actionError = "Graphify could not build the graph (exit \(result.exitCode))."
             } else {
                 await loadStatus()
-                app.invalidateRuntimes(projectID: projectID)
             }
         } catch {
             actionError = error.localizedDescription

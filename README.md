@@ -238,7 +238,13 @@ The **Extensions & Mods** page in the sidebar (or `⇧⌘E`) manages the Claude 
 - The MCP bridge is scoped to one repository and requires the bundled `Gantry-plugins` helper, which the provided build script includes. It is only active when the chat's Claude Code process starts with a matching plugin; changing code hosts recycles idle runtimes.
 - Graphify is optional and not bundled. Gantry finds an existing install on `PATH` or in `~/.local/bin`, `/opt/homebrew/bin`, or `/usr/local/bin`. With `uv` available, the Graphify page can install `graphifyy[mcp]` after a confirmation sheet; without it, the page shows the command for Terminal.
 - The Graphify page builds code graphs with `graphify update`, which is local and does not call a model. Doc, PDF, image, audio, and video extraction still needs Graphify's `/graphify` skill in a chat. The generated files live in the project's `graphify-out/` folder.
-- Graph MCP tools appear when a chat starts. After building a graph or installing Graphify, idle chats recycle immediately; a running chat picks up the tools after its next turn. **Open Graph** opens the generated `graph.html` in the default browser.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:9c98ae3d8fe144ceba5e8f18dfb1463011bce6f7da70dbaa4869a9d4cc2d8f0c -->
+
+- Graph MCP tools appear when a chat starts. Installing Graphify refreshes chats across all projects; building a graph refreshes chats in that project. Idle chats recycle immediately, and running chats pick up the tools after their next turn. **Open Graph** opens the generated `graph.html` in the default browser.
+
+<!-- /coderabbit-ai-generated:v1 -->
 - Image attachments and MCP elicitation UI are not supported. File and folder paths can be attached from the composer, and standard permission prompts and `AskUserQuestion` dialogs are supported.
 - The context meter estimates the window from the resolved model name. Providers that report an unrecognized model name are assumed to have a 1M window.
 - **Commit…** requires the project folder to be a Git working tree. If Git is unavailable or the folder is not a repository, the sheet shows Git's error and commits nothing.

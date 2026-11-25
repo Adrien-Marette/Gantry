@@ -66,7 +66,7 @@ public enum SessionSearch {
         var hits: [SessionSearchHit] = []
         for project in projects {
             for session in project.sessions {
-                if session.title.range(of: normalized, options: options) != nil {
+                if normalizedQuery(session.title).range(of: normalized, options: options) != nil {
                     hits.append(SessionSearchHit(
                         projectID: project.id,
                         projectName: project.name,

@@ -91,7 +91,10 @@ struct ComposerView: View {
         let model: String?
         if let name = session.contextModelName, name.lowercased().contains("[1m]") {
             model = name
-        } else if let lastResolved, lastResolved.lowercased().contains("[1m]") {
+        } else if let lastResolved, lastResolved.lowercased().contains("[1m]"),
+                  session.contextModelName.map({
+                      lastResolved.caseInsensitiveCompare($0 + "[1m]") == .orderedSame
+                  }) ?? true {
             model = lastResolved
         } else {
             model = session.contextModelName ?? lastResolved ?? session.actualModelName

@@ -650,6 +650,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var favoriteMarketplaces: [FavoriteMarketplace]?
     /// Last folder used by the Create Mod wizard.
     public var modsDirectory: String?
+    /// Optional so older state decodes; nil means ask.
+    public var transcriptImport: TranscriptImportPreference?
 
     public init(
         defaultModel: ModelChoice = .automatic,
@@ -662,7 +664,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
         providers: [AIProvider]? = nil,
         defaultProviderID: UUID? = nil,
         favoriteMarketplaces: [FavoriteMarketplace]? = nil,
-        modsDirectory: String? = nil
+        modsDirectory: String? = nil,
+        transcriptImport: TranscriptImportPreference? = nil
     ) {
         self.defaultModel = defaultModel
         self.defaultPermissionMode = defaultPermissionMode
@@ -675,6 +678,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.defaultProviderID = defaultProviderID
         self.favoriteMarketplaces = favoriteMarketplaces
         self.modsDirectory = modsDirectory
+        self.transcriptImport = transcriptImport
     }
 }
 

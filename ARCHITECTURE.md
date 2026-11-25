@@ -277,7 +277,8 @@ include `ChatSession.modelUsage`, `ChatSession.contextTokens`,
 `ChatSession.contextModelName`, `ChatSession.claudeReportedCostUSD`,
 `Project.pluginID`, `Project.devModPath`, `AppSettings.appearance`,
 `AppSettings.plugins`, `AppSettings.providers`,
-`AppSettings.favoriteMarketplaces`, and `AppSettings.modsDirectory`. State
+`AppSettings.favoriteMarketplaces`, `AppSettings.modsDirectory`, and
+`AppSettings.transcriptImport`. State
 written by 0.1.0 must keep decoding.
 
 At launch, the app repairs what it can:
@@ -491,6 +492,20 @@ project commands and dev mods depend on the working directory.
 `/clear` (aliases `/reset`, `/new`) and `/rename` (alias `/name`) are handled
 locally so Gantry's session identity and title stay in sync. Every other slash
 command is sent to Claude Code unchanged.
+
+## Transcript import
+
+`ClaudeTranscriptImporter` reads Claude Code's own transcripts from
+`<config>/projects/<path with non-alphanumerics as ->/<session-id>.jsonl`.
+Assistant and tool-result lines go through `ClaudeStreamParser`; meta and
+sidechain lines and command echoes are skipped. Each file becomes a
+`ChatSession` whose `claudeSessionID` is the file's UUID with
+`claudeStarted = true`, so the next prompt resumes it with `--resume`. Files
+whose ID already belongs to a Gantry session (including Gantry's own chats)
+are never imported twice. `AppModel.offerTranscriptImport` runs when a project
+is opened, asks via `NSAlert` unless `AppSettings.transcriptImport` remembers
+the answer, and parses off the main actor. Import is read-only on Claude Code's
+files.
 
 ## Conversation search
 

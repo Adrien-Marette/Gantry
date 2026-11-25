@@ -46,9 +46,7 @@ import Testing
     #expect(session.claudeStarted)
     #expect(session.title == "List the files")
     #expect(session.turns.map(\.role) == [.user, .assistant])
-    #expect(session.turns[1].textContent == "Listing.
-
-Done.")
+    #expect(session.turns[1].textContent == "Listing.\n\nDone.")
     let tool = try #require(session.turns[1].tools.first)
     #expect(tool.status == .completed)
     #expect(tool.resultText == "README.md")

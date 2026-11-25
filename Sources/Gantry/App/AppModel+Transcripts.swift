@@ -17,7 +17,7 @@ extension AppModel {
         guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return }
         projects[index].autoSyncTranscripts = isOn
         scheduleSave()
-        if isOn { offerTranscriptImport(for: projectID) }
+        if isOn { syncTranscripts(in: projectID) }
     }
 
     /// Transcripts of this project that no Gantry session (including Gantry's own) owns yet.
@@ -111,7 +111,7 @@ extension AppModel {
         }
     }
 
-    private func syncTranscripts(in projectID: UUID) {
+    func syncTranscripts(in projectID: UUID) {
         offerTranscriptImport(for: projectID)
         refreshImportedSessions(in: projectID)
     }

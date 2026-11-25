@@ -121,6 +121,8 @@ final class AppModel {
     var activities: [UUID: SessionActivity]
     var claudeAvailability: ClaudeAvailability = .checking
     var loadError: String?
+    /// Progress of a Claude Code history import; `isWorking` shows the spinner.
+    var transcriptImportStatus: (text: String, isWorking: Bool)?
     var commandPalettePresented = false
     var reviewRequested = false
     var searchRequested = false
@@ -518,6 +520,7 @@ final class AppModel {
         }
 
         if let existing = projects.first(where: { $0.path == normalized.path }) {
+            offerTranscriptImport(for: existing.id)
             if let sessionID = existing.sortedSessions.first?.id {
                 select(sessionID: sessionID)
                 return sessionID
@@ -535,6 +538,7 @@ final class AppModel {
         activities[session.id] = SessionActivity()
         select(sessionID: session.id)
         scheduleSave()
+        offerTranscriptImport(for: project.id)
         return session.id
     }
 

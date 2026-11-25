@@ -41,6 +41,15 @@ struct RootView: View {
                 .zIndex(30)
             }
         }
+        .overlay(alignment: .bottomTrailing) {
+            if let status = app.transcriptImportStatus {
+                TranscriptImportToast(text: status.text, isWorking: status.isWorking)
+                    .padding([.bottom, .trailing], 24)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                    .zIndex(30)
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: app.transcriptImportStatus?.text)
         .animation(.easeOut(duration: 0.2), value: app.projects.isEmpty)
         .animation(.easeOut(duration: 0.2), value: app.commandPalettePresented)
         .sheet(isPresented: renameSheetBinding) {
@@ -155,6 +164,31 @@ private struct LoadErrorBanner: View {
         .padding(.vertical, 10)
         .glassPanel(radius: 20)
         .frame(maxWidth: 620)
+    }
+}
+
+private struct TranscriptImportToast: View {
+    var text: String
+    var isWorking: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            if isWorking {
+                LiveIndicator()
+            } else {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Palette.accent)
+            }
+            Text(text)
+                .font(Typo.caption)
+                .foregroundStyle(Palette.ink)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .glassPanel(radius: 20)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(text)
     }
 }
 

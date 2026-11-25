@@ -27,7 +27,7 @@ struct TranscriptImportSheet: View {
             Hairline()
             footer
         }
-        .frame(width: 860, height: 600)
+        .frame(width: 980, height: 640)
         .background(CanvasBackground())
         .task {
             sessions = await app.loadImportableSessions(for: projectID)
@@ -82,8 +82,8 @@ struct TranscriptImportSheet: View {
         } else {
             HStack(spacing: 0) {
                 list
-                    .frame(width: 340)
-                Hairline(axis: .vertical)
+                    .frame(width: 300)
+                Divider()
                 preview
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -91,20 +91,18 @@ struct TranscriptImportSheet: View {
     }
 
     private var list: some View {
-        ScrollView {
-            LazyVStack(spacing: 2) {
+        List(selection: $previewID) {
+            Section("\(sessions.count) conversations") {
                 ForEach(sessions) { session in
-                    row(session)
+                    row(session).tag(session.id)
                 }
             }
-            .padding(8)
         }
-        .scrollIndicators(.never)
+        .listStyle(.sidebar)
     }
 
     private func row(_ session: ChatSession) -> some View {
-        let isPreviewed = previewID == session.id
-        return HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Toggle("", isOn: Binding(
                 get: { checked.contains(session.id) },
                 set: { isOn in
@@ -115,77 +113,48 @@ struct TranscriptImportSheet: View {
             .labelsHidden()
             .accessibilityLabel("Import \(session.title)")
 
-            Button {
-                previewID = session.id
-            } label: {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(session.title)
-                        .font(Typo.bodyMedium)
-                        .foregroundStyle(Palette.ink)
-                        .lineLimit(1)
-                    Text("\(Format.relativeTime(session.updatedAt)) · \(session.turns.count) messages")
-                        .font(Typo.micro)
-                        .foregroundStyle(Palette.tertiaryInk)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(session.title)
+                    .lineLimit(1)
+                Text("\(Format.relativeTime(session.updatedAt)) · \(session.turns.count) messages")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Preview \(session.title)")
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isPreviewed ? Palette.sidebarSelection : Color.clear)
-        )
+        .padding(.vertical, 2)
     }
 
+    /// Reuses the chat's own turn views so the preview looks like the conversation will.
     @ViewBuilder
     private var preview: some View {
         if let session = sessions.first(where: { $0.id == previewID }) {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 14) {
+                LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(session.turns) { turn in
-                        previewTurn(turn)
+                        if turn.role == .user {
+                            UserTurnView(turn: turn)
+                                .padding(.top, turn.id == session.turns.first?.id ? 0 : 32)
+                        } else {
+                            AssistantTurnView(
+                                turn: turn,
+                                activity: nil,
+                                isLatest: false,
+                                projectPath: app.projects.first { $0.id == projectID }?.path ?? ""
+                            )
+                            .padding(.top, 16)
+                        }
                     }
                 }
-                .padding(20)
+                .padding(24)
             }
             .id(session.id)
+            .background(Palette.canvas)
         } else {
             Text("Select a conversation to preview it.")
                 .font(Typo.caption)
                 .foregroundStyle(Palette.tertiaryInk)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-    }
-
-    private func previewTurn(_ turn: ConversationTurn) -> some View {
-        let text = turn.textContent
-        let tools = turn.tools.map(\.name)
-        return VStack(alignment: .leading, spacing: 4) {
-            Text(turn.role == .user ? "You" : "Claude")
-                .font(Typo.micro)
-                .foregroundStyle(turn.role == .user ? Palette.accent : Palette.tertiaryInk)
-            if !text.isEmpty {
-                // shortcut: plain text capped at 1,200 characters, enough to judge relevance.
-                Text(text.count > 1200 ? String(text.prefix(1200)) + "…" : text)
-                    .font(Typo.caption)
-                    .foregroundStyle(Palette.ink)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if !tools.isEmpty {
-                Text("Tools: " + tools.joined(separator: ", "))
-                    .font(Typo.monoSmall)
-                    .foregroundStyle(Palette.tertiaryInk)
-                    .lineLimit(2)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .surfaceCard()
     }
 
     private var footer: some View {

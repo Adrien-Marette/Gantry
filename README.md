@@ -14,6 +14,8 @@ A native macOS workspace for **Claude Code** — built with SwiftUI and Liquid G
 
 ## What's new in 0.4.1
 
+- **Pasted images.** Paste a screenshot or image into the composer with ⌘V. PNG, JPEG, GIF, and WebP files up to 3.75 MB are sent inline; other images are passed by path. Image attachments show thumbnails in the composer and in sent turns, clicking one opens a large preview, and pasted images are removed after 30 days.
+- **Smoother streaming.** Streaming output updates at roughly 60 fps, and the transcript stays pinned to the newest text unless you scroll; a scroll-to-bottom button returns to live output. Consecutive paragraphs now share one text run, so drag selection crosses paragraph breaks.
 - **Graphify knowledge graphs.** An optional local Graphify integration: the **Graphify** page builds or refreshes a project's code graph, opens the generated `graph.html`, and runs queries. Chats whose project has a built graph get the `graphify-mcp` server automatically, with no manual MCP setup. Installing Graphify requires an exact `uv` command and an explicit confirmation.
 - **Sub-agent runs.** The inspector now lists every `Task`/`Agent` delegation with its type, description, live status, and duration. Selecting one shows the prompt Claude gave the sub-agent and its final report; background delegations are labelled.
 - **Review fixes.** The context meter is sized from the model that produced the tokens, with unknown custom models assumed to have a 1M window. Commit pathspecs are literal per reviewed file and skip paths that became directories; conversation search normalizes repeated whitespace; number questions validate inline. `⌘0` reopens Gantry, and `CLAUDE_CODE_PATH` is honored alongside the existing override.

@@ -16,6 +16,7 @@ struct ComposerView: View {
     @State private var commandMenuDismissed = false
     @State private var keyboardScrollRevision = 0
     @State private var isDropTargeted = false
+    @State private var pasteMonitor: Any?
     @Namespace private var ownGlassNamespace
 
     private var isRunning: Bool {
@@ -270,6 +271,23 @@ struct ComposerView: View {
                 focused = true
             }
         }
+        // The text field's editor swallows ⌘V before SwiftUI sees it, so a
+        // local monitor intercepts image pastes while the composer has focus.
+        .onChange(of: focused, initial: true) { _, isFocused in
+            if let pasteMonitor { NSEvent.removeMonitor(pasteMonitor) }
+            pasteMonitor = nil
+            guard isFocused else { return }
+            pasteMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+                      event.charactersIgnoringModifiers == "v",
+                      pasteImage() else { return event }
+                return nil
+            }
+        }
+        .onDisappear {
+            if let pasteMonitor { NSEvent.removeMonitor(pasteMonitor) }
+            pasteMonitor = nil
+        }
     }
 
     private var placeholder: String {
@@ -306,7 +324,32 @@ struct ComposerView: View {
         .padding(.horizontal, 4)
     }
 
+    @ViewBuilder
     private func attachmentChip(_ attachment: PromptAttachment) -> some View {
+        if attachment.isImage {
+            ImageThumbnail(path: attachment.path, size: 48)
+                .overlay(alignment: .topTrailing) {
+                    Button {
+                        removeAttachment(attachment)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 13))
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(.white, .black.opacity(0.6))
+                    }
+                    .buttonStyle(.plain)
+                    .offset(x: 4, y: -4)
+                    .help("Remove \(attachment.name)")
+                    .accessibilityLabel("Remove \(attachment.name)")
+                }
+                .padding(.top, 4)
+                .padding(.trailing, 4)
+        } else {
+            fileChip(attachment)
+        }
+    }
+
+    private func fileChip(_ attachment: PromptAttachment) -> some View {
         HStack(spacing: 5) {
             Image(systemName: attachment.isDirectory ? "folder" : "doc.text")
                 .font(.system(size: 10, weight: .medium))
@@ -357,6 +400,29 @@ struct ComposerView: View {
             with: incoming
         )
         focused = true
+        return true
+    }
+
+    /// Attaches an image from the pasteboard; returns false for text pastes so
+    /// the text field handles them normally.
+    private func pasteImage() -> Bool {
+        let pasteboard = NSPasteboard.general
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
+           !urls.isEmpty, urls.allSatisfy({ PromptAttachment.isImagePath($0.path) }) {
+            return addAttachments(urls)
+        }
+        guard pasteboard.canReadObject(forClasses: [NSImage.self], options: nil),
+              pasteboard.string(forType: .string) == nil,
+              let image = NSImage(pasteboard: pasteboard),
+              let tiff = image.tiffRepresentation,
+              let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:])
+        else { return false }
+        do {
+            let attachment = try PromptAttachment.savePastedImage(png, in: GantryPaths().pastedImagesDirectory)
+            app.attachments[session.id] = PromptAttachment.merging(attachments, with: [attachment])
+        } catch {
+            activity?.banner = "Couldn't save the pasted image."
+        }
         return true
     }
 

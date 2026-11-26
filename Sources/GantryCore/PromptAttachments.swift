@@ -9,6 +9,43 @@ public struct PromptAttachment: Hashable, Sendable, Identifiable {
 
     public var id: String { path }
 
+    public var isImage: Bool { !isDirectory && PromptAttachment.isImagePath(path) }
+
+    static let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "gif", "webp", "heic", "tiff", "tif", "bmp"]
+
+    public static func isImagePath(_ path: String) -> Bool {
+        imageExtensions.contains((path as NSString).pathExtension.lowercased())
+    }
+
+    /// Writes pasted image bytes (PNG) to `directory` with user-only
+    /// permissions so Claude can read them by path like any attachment.
+    public static func savePastedImage(_ png: Data, in directory: URL) throws -> PromptAttachment {
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700]
+        )
+        let name = "Pasted \(UUID().uuidString.prefix(8)).png"
+        let url = directory.appendingPathComponent(name)
+        try png.write(to: url, options: .atomic)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        return PromptAttachment(path: url.standardizedFileURL.path, name: name)
+    }
+
+    /// Deletes pasted images older than `age` so the folder does not grow
+    /// forever. Their thumbnails in old chats become placeholders.
+    public static func removePastedImages(in directory: URL, olderThan age: TimeInterval, now: Date = .now) {
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: [.contentModificationDateKey]
+        )) ?? []
+        for file in files {
+            let modified = (try? file.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+            if let modified, now.timeIntervalSince(modified) > age {
+                try? FileManager.default.removeItem(at: file)
+            }
+        }
+    }
+
     public init(path: String, name: String, isDirectory: Bool = false) {
         self.path = path
         self.name = name
@@ -73,5 +110,15 @@ public enum PromptAttachmentComposer {
             return "\(heading)\n\(lines)"
         }
         return "\(body)\n\n\(heading)\n\(lines)"
+    }
+
+    /// Image paths listed by `compose` in a sent prompt, so the transcript can
+    /// show thumbnails without persisting extra state.
+    public static func imagePaths(in prompt: String) -> [String] {
+        prompt.split(separator: "\n").compactMap { line in
+            guard line.hasPrefix("- /") else { return nil }
+            let path = String(line.dropFirst(2))
+            return PromptAttachment.isImagePath(path) ? path : nil
+        }
     }
 }

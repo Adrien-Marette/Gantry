@@ -10,6 +10,7 @@ struct ChatWorkspaceView: View {
     var project: Project
 
     @State private var isAtBottom = true
+    @State private var isUserScrolling = false
     @State private var dockHeight: CGFloat = 170
     @State private var branch: String?
     @State private var providerHasKey: Bool?
@@ -329,24 +330,60 @@ struct ChatWorkspaceView: View {
                         PreviewScrollFollower(
                             sessionID: session.id,
                             proxy: proxy,
-                            isAtBottom: isAtBottom
+                            isAtBottom: isAtBottom && !isUserScrolling
                         )
                     }
-                    .onScrollGeometryChange(for: Bool.self) { scrollGeometry in
-                        let distance = scrollGeometry.contentSize.height
-                            - (scrollGeometry.contentOffset.y + scrollGeometry.containerSize.height)
-                        return distance < 110
-                    } action: { _, newValue in
-                        if isAtBottom != newValue { isAtBottom = newValue }
+                    .onScrollGeometryChange(for: ScrollBottomState.self) { scrollGeometry in
+                        ScrollBottomState(
+                            contentHeight: scrollGeometry.contentSize.height,
+                            distance: scrollGeometry.contentSize.height
+                                - (scrollGeometry.contentOffset.y + scrollGeometry.containerSize.height)
+                        )
+                    } action: { old, new in
+                        // Priority: the user's own scrolling, then auto-scroll.
+                        // Growth (new turn, tool rows, final render) would push
+                        // the reader past the threshold, so judge by where they
+                        // were before it.
+                        if !isUserScrolling, new.contentHeight != old.contentHeight, old.distance < 24 {
+                            scrollToBottom(proxy, animated: false)
+                            return
+                        }
+                        let atBottom = new.distance < 24
+                        if isAtBottom != atBottom { isAtBottom = atBottom }
                     }
+                    .onScrollPhaseChange { _, phase in
+                        isUserScrolling = phase == .interacting || phase == .decelerating
+                    }
+                    .overlay(alignment: .bottom) {
+                        if !isAtBottom, !session.turns.isEmpty {
+                            Image(systemName: "arrow.down")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 40, height: 40)
+                                // Same tinted glass as the send button (.glassProminent).
+                                .glassEffect(.regular.tint(Palette.accent), in: .circle)
+                                .overlay {
+                                    ScrollPassthroughClickTarget(toolTip: "Scroll to bottom") {
+                                        scrollToBottom(proxy, animated: true)
+                                    }
+                                }
+                                .accessibilityElement()
+                                .accessibilityLabel("Scroll to bottom")
+                                .accessibilityAddTraits(.isButton)
+                                .accessibilityAction { scrollToBottom(proxy, animated: true) }
+                            .padding(.bottom, dockHeight + 12)
+                            .transition(.opacity)
+                        }
+                    }
+                    .animation(.easeOut(duration: 0.14), value: isAtBottom)
                     .onChange(of: session.turns.count) { _, _ in
                         scrollToBottom(proxy, animated: true)
                     }
                     .onChange(of: pendingPermission?.requestID) { _, _ in
-                        if isAtBottom { scrollToBottom(proxy, animated: true) }
+                        if isAtBottom, !isUserScrolling { scrollToBottom(proxy, animated: true) }
                     }
                     .onChange(of: dockHeight) { _, _ in
-                        if isAtBottom { scrollToBottom(proxy, animated: false) }
+                        if isAtBottom, !isUserScrolling { scrollToBottom(proxy, animated: false) }
                     }
                     .onChange(of: app.pendingTurnScroll) { _, _ in
                         scrollToPendingTurn(proxy)
@@ -563,6 +600,46 @@ struct ChatWorkspaceView: View {
             proxy.scrollTo("bottom", anchor: .bottom)
         }
     }
+}
+
+/// A click target floating over the transcript that forwards scroll-wheel
+/// events to whatever lies beneath it; SwiftUI overlays otherwise eat them.
+private struct ScrollPassthroughClickTarget: NSViewRepresentable {
+    var toolTip: String
+    var action: () -> Void
+
+    final class TargetView: NSView {
+        var action: () -> Void = {}
+
+        override func mouseDown(with event: NSEvent) {}
+        override func mouseUp(with event: NSEvent) {
+            if bounds.contains(convert(event.locationInWindow, from: nil)) { action() }
+        }
+        override func resetCursorRects() { addCursorRect(bounds, cursor: .pointingHand) }
+        override func scrollWheel(with event: NSEvent) {
+            guard let content = window?.contentView else { return }
+            isHidden = true
+            let below = content.hitTest(content.convert(event.locationInWindow, from: nil))
+            isHidden = false
+            below?.scrollWheel(with: event)
+        }
+    }
+
+    func makeNSView(context: Context) -> TargetView {
+        let view = TargetView()
+        view.toolTip = toolTip
+        view.action = action
+        return view
+    }
+
+    func updateNSView(_ view: TargetView, context: Context) {
+        view.action = action
+    }
+}
+
+private struct ScrollBottomState: Equatable {
+    var contentHeight: CGFloat
+    var distance: CGFloat
 }
 
 private struct DockHeightKey: PreferenceKey {

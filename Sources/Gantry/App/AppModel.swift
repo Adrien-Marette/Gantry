@@ -171,6 +171,10 @@ final class AppModel {
 
     init(dataStore: AppDataStore = AppDataStore()) {
         self.dataStore = dataStore
+        let pastedImages = dataStore.paths.pastedImagesDirectory
+        Task.detached(priority: .background) {
+            PromptAttachment.removePastedImages(in: pastedImages, olderThan: 30 * 24 * 3600)
+        }
         var snapshot = AppSnapshot()
         var loadErrorText: String?
         do {

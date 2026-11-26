@@ -8,6 +8,7 @@ DerivedData/
 
 # Local tool state and credentials
 .claude/
+graphify-out/
 .env
 .env.*
 !.env.example

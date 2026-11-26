@@ -24,8 +24,8 @@ struct SidebarView: View {
                 topContent
                     .background(WindowDragSurface())
                 projectList
+                footer
             }
-            .safeAreaInset(edge: .bottom, spacing: 0) { footer }
         }
         .overlay(alignment: .trailing) {
             Hairline(axis: .vertical)
@@ -322,6 +322,13 @@ struct SidebarView: View {
                     Button("Show in Finder") {
                         NSWorkspace.shared.activateFileViewerSelecting([project.url])
                     }
+                    Button("Import Conversations…") {
+                        app.showTranscriptImport(for: project.id)
+                    }
+                    Toggle("Auto-sync Conversations", isOn: Binding(
+                        get: { project.autoSyncTranscripts == true },
+                        set: { app.setAutoSyncTranscripts($0, for: project.id) }
+                    ))
                     Divider()
                     Button("Remove Project…", role: .destructive) {
                         pendingRemoveProject = project
@@ -352,6 +359,13 @@ struct SidebarView: View {
                 Button("Show in Finder") {
                     NSWorkspace.shared.activateFileViewerSelecting([project.url])
                 }
+                Button("Import Conversations…") {
+                    app.showTranscriptImport(for: project.id)
+                }
+                Toggle("Auto-sync Claude Code Conversations", isOn: Binding(
+                    get: { project.autoSyncTranscripts == true },
+                    set: { app.setAutoSyncTranscripts($0, for: project.id) }
+                ))
                 Divider()
                 Button("Remove Project…", role: .destructive) {
                     pendingRemoveProject = project

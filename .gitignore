@@ -11,3 +11,6 @@ DerivedData/
 .env
 .env.*
 !.env.example
+
+# Generated Graphify knowledge graph
+graphify-out/

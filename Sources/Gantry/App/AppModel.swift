@@ -121,6 +121,16 @@ final class AppModel {
     var activities: [UUID: SessionActivity]
     var claudeAvailability: ClaudeAvailability = .checking
     var loadError: String?
+    /// Progress of a Claude Code history import; `isWorking` shows the spinner.
+    var transcriptImportStatus: (text: String, isWorking: Bool)?
+    /// Project whose import picker is open.
+    var transcriptImportProjectID: UUID?
+    /// True when the picker opened because a project was opened, the only case
+    /// where remembering the answer makes sense.
+    var transcriptImportOffersRemember = false
+    @ObservationIgnored var transcriptWatcher: TranscriptWatcher?
+    /// Byte size of each imported session's transcript when it was last read.
+    @ObservationIgnored var importedTranscriptSizes: [UUID: Int] = [:]
     var commandPalettePresented = false
     var reviewRequested = false
     var searchRequested = false
@@ -161,6 +171,10 @@ final class AppModel {
 
     init(dataStore: AppDataStore = AppDataStore()) {
         self.dataStore = dataStore
+        let pastedImages = dataStore.paths.pastedImagesDirectory
+        Task.detached(priority: .background) {
+            PromptAttachment.removePastedImages(in: pastedImages, olderThan: 30 * 24 * 3600)
+        }
         var snapshot = AppSnapshot()
         var loadErrorText: String?
         do {
@@ -285,6 +299,7 @@ final class AppModel {
         guard !started else { return }
         started = true
         resolveClaude()
+        startTranscriptAutoSync()
     }
 
     func shutdown() {
@@ -518,6 +533,7 @@ final class AppModel {
         }
 
         if let existing = projects.first(where: { $0.path == normalized.path }) {
+            offerTranscriptImport(for: existing.id)
             if let sessionID = existing.sortedSessions.first?.id {
                 select(sessionID: sessionID)
                 return sessionID
@@ -535,6 +551,7 @@ final class AppModel {
         activities[session.id] = SessionActivity()
         select(sessionID: session.id)
         scheduleSave()
+        offerTranscriptImport(for: project.id)
         return session.id
     }
 

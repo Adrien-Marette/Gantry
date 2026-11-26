@@ -108,6 +108,8 @@ before adding a new file, and update it when the structure changes.
 - `swift test` must pass before a pull request is ready for review.
 - If a change cannot be tested automatically, describe exactly what you ran
   and what you observed in the pull request.
+- CI runs `swift build`, `swift test`, the release bundle build, and the version
+  check on every pull request to `main`; all three are required checks.
 
 ## Commits and pull requests
 

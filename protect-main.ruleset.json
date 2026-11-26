@@ -31,6 +31,23 @@
       "type": "required_signatures"
     },
     {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": false,
+        "required_status_checks": [
+          {
+            "context": "Build and test"
+          },
+          {
+            "context": "Release bundle"
+          },
+          {
+            "context": "Version consistency"
+          }
+        ]
+      }
+    },
+    {
       "type": "pull_request",
       "parameters": {
         "required_approving_review_count": 0,

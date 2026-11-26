@@ -300,11 +300,15 @@ Sources/GantryPluginMCP/
   main.swift            Bundled stdio MCP server; forwards tool calls to the app
 Scripts/
   build-app.sh          SwiftPM build → Gantry.app bundle (including the MCP helper) + icon + ad-hoc signature
+  check-version.sh      Fails when the three version constants drift apart
   generate-icon.swift   Resolution-independent app icon renderer
 ```
 
 ## Verification
 
+- GitHub Actions (`.github/workflows/ci.yml`) runs `swift build`, `swift test`,
+  the release bundle build, and the version check on every pull request to
+  `main`; all three are required checks.
 - `swift test` — tests covering protocol parsing/serialization, runtime permission flow with a fake CLI, `AskUserQuestion` parsing and answers, provider environment injection, model-aware cost estimation, context-window sizing, prompt attachment composition, session review and literal-pathspec commits, conversation search normalization, Graphify detection and MCP wiring, Graphify command construction and its shell-free process runner, plugin remote parsing and REST fixtures, MCP tool execution and the Unix-socket bridge, Claude Code plugin catalog/command parsing, slash-command catalog parsing and matching, favorites, mod scaffolding, Markdown, persistence, and 0.1.0 state compatibility.
 - Extension scaffolding can be validated against the real CLI:
   ```sh

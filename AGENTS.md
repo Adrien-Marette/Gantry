@@ -60,6 +60,11 @@ Gantry_RUN_KEYCHAIN_TESTS=1 swift test --filter keychainRoundTrip
 Gantry_RUN_KEYCHAIN_TESTS=1 swift test --filter pluginKeychainRoundTrip
 ```
 
+CI (`.github/workflows/ci.yml`) runs `swift build` + `swift test` and
+`./Scripts/build-app.sh` on `macos-26`, plus `Scripts/check-version.sh` on
+`ubuntu-latest`; all three are required checks on `main`. Gated tests never run
+in CI.
+
 - Swift tools 6.2; every target pins `.swiftLanguageMode(.v5)`. Keep it unless
   asked to migrate.
 - No third-party dependencies. Ask before adding one.

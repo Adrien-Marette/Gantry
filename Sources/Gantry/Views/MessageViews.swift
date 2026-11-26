@@ -473,6 +473,12 @@ struct UserTurnView: View {
             Spacer(minLength: 96)
 
             VStack(alignment: .trailing, spacing: 6) {
+                let imagePaths = PromptAttachmentComposer.imagePaths(in: turn.textContent)
+                if !imagePaths.isEmpty {
+                    HStack(spacing: 6) {
+                        ForEach(imagePaths, id: \.self) { ImageThumbnail(path: $0, size: 120) }
+                    }
+                }
                 Text(turn.textContent)
                     .font(.system(size: 14))
                     .foregroundStyle(Palette.ink)

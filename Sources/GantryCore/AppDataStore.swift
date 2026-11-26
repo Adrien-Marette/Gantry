@@ -4,6 +4,7 @@ public struct GantryPaths: Sendable {
     public var supportDirectory: URL
     public var stateFile: URL
     public var logsDirectory: URL
+    public var pastedImagesDirectory: URL { supportDirectory.appendingPathComponent("Pasted Images", isDirectory: true) }
 
     public init(
         supportDirectory: URL = GantryPaths.defaultSupportDirectory(),

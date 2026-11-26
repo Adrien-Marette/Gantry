@@ -85,15 +85,38 @@ public enum ClaudeWire {
         ])
     }
 
+    /// Attached images listed in the prompt are also sent inline as image
+    /// blocks, like a paste into the `claude` terminal, so Claude sees them
+    /// without a Read call. The path stays in the text as a fallback.
     public static func userMessage(_ text: String) throws -> Data {
-        try line([
+        var content: [[String: Any]] = [["type": "text", "text": text]]
+        for path in PromptAttachmentComposer.imagePaths(in: text) {
+            if let block = imageBlock(path: path) { content.append(block) }
+        }
+        return try line([
             "type": "user",
             "message": [
                 "role": "user",
-                "content": [["type": "text", "text": text]]
+                "content": content
             ],
             "parent_tool_use_id": NSNull()
         ])
+    }
+
+    /// The API accepts these formats up to 5 MB each after base64 (4/3
+    /// growth); anything else is left to Claude's Read tool via the path.
+    static let inlineImageLimit = 3_750_000
+    static let inlineImageTypes = ["png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+                                   "gif": "image/gif", "webp": "image/webp"]
+
+    static func imageBlock(path: String) -> [String: Any]? {
+        guard let mediaType = inlineImageTypes[(path as NSString).pathExtension.lowercased()],
+              let data = FileManager.default.contents(atPath: path),
+              !data.isEmpty, data.count <= inlineImageLimit else { return nil }
+        return [
+            "type": "image",
+            "source": ["type": "base64", "media_type": mediaType, "data": data.base64EncodedString()]
+        ]
     }
 
     public static func permissionResponse(requestID: String, reply: ClaudePermissionReply) throws -> Data {

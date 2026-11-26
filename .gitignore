@@ -8,7 +8,9 @@ DerivedData/
 
 # Local tool state and credentials
 .claude/
-graphify-out/
 .env
 .env.*
 !.env.example
+
+# Generated Graphify knowledge graph
+graphify-out/

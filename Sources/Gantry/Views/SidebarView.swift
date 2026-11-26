@@ -24,8 +24,8 @@ struct SidebarView: View {
                 topContent
                     .background(WindowDragSurface())
                 projectList
+                footer
             }
-            .safeAreaInset(edge: .bottom, spacing: 0) { footer }
         }
         .overlay(alignment: .trailing) {
             Hairline(axis: .vertical)

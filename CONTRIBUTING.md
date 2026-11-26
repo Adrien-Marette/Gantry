@@ -92,7 +92,7 @@ before adding a new file, and update it when the structure changes.
 - Keep Review & Ship commits explicit and local. The confirmation sheet must
   list the files, each file is staged with a literal pathspec, and Gantry never
   pushes, amends, or bypasses hooks or signing.
-- Streaming output is coalesced at roughly 30 fps; avoid introducing per-token
+- Streaming output is coalesced at roughly 60 fps; avoid introducing per-token
   UI work.
 - UI changes must be checked in light and dark appearance, respect the
   existing Liquid Glass surfaces, and keep accessibility labels meaningful.

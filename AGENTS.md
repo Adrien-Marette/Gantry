@@ -96,7 +96,7 @@ These are non-negotiable unless the user explicitly asks to change the design.
 - **One `ClaudeRuntime` process per session**, reused within a chat. After
   relaunch it resumes with `--resume <session-id>`. Do not introduce a shared
   global process.
-- **Streaming is coalesced at ~30 fps** (`StreamPreview` in `AppModel`, 32 ms
+- **Streaming is coalesced at ~60 fps** (`StreamPreview` in `AppModel`, 16 ms
   flush). Do not add per-token UI work or observation.
 - **Permission flow is sacred**: `can_use_tool` requests surface as permission
   cards (or question cards for `AskUserQuestion`) and get a `control_response`

@@ -133,7 +133,7 @@ so pipe callbacks never mutate shared state concurrently.
 | --- | --- |
 | `system` | Session model name, slash-command names from older CLIs, ready status |
 | `status` / `retry` | Status text such as Thinking or Reconnecting |
-| `streamText` / `streamThinking` | Appended to a preview buffer; flushed at most every 32 ms (about 30 fps) |
+| `streamText` / `streamThinking` | Appended to a preview buffer; flushed at most every 16 ms (about 60 fps) |
 | `streamToolStart` | Flushes the preview and shows the tool name |
 | `assistant` | Merges text, thinking, and tool-use blocks into the streaming turn; duplicate blocks are suppressed by signature, and its reported usage updates the composer's context meter |
 | `toolResults` | Attaches results to the matching tool; result text is capped at 250,000 characters |

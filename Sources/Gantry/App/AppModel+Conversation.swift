@@ -705,7 +705,8 @@ extension AppModel {
     private func schedulePreviewFlush(_ sessionID: UUID) {
         guard previewFlushTasks[sessionID] == nil else { return }
         previewFlushTasks[sessionID] = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(32))
+            // Coalesce token bursts to ~60 fps; never redraw per token.
+            try? await Task.sleep(for: .milliseconds(16))
             guard !Task.isCancelled else { return }
             self?.flushPreview(sessionID)
         }

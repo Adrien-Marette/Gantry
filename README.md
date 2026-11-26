@@ -131,7 +131,7 @@ Gantry.app
 
 1. On the first message, Gantry spawns the `claude` CLI in the project folder with a session UUID.
 2. It writes an `initialize` control request, then the user's prompt as `stream-json`.
-3. CLI output is parsed into system, partial-text, assistant, tool-result, permission, and result events. Partial deltas are coalesced at roughly 30 fps so long answers do not redraw the UI per token.
+3. CLI output is parsed into system, partial-text, assistant, tool-result, permission, and result events. Partial deltas are coalesced at roughly 60 fps so long answers do not redraw the UI per token.
 4. A permission or question request pauses Claude Code until the user answers. The app sends a `control_response` with `behavior: allow` or `deny`; “allow for session” forwards Claude Code's own permission suggestions. For `AskUserQuestion`, the allow response carries an `updatedInput.answers` map keyed by question text.
 5. On the next message the same process is reused. After an app restart, Gantry relaunches the CLI with `--resume <session-id>`.
 6. The selected provider's environment — endpoint, model aliases, and credential — is injected into that child process only. Switching providers recycles the process after the current turn and resumes the same Claude Code transcript with the new environment.

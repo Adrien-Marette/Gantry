@@ -15,14 +15,47 @@ struct MarkdownTextView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
-                markdownBlock(block)
+            ForEach(Array(Self.items(from: blocks).enumerated()), id: \.offset) { _, item in
+                switch item {
+                case .paragraphs(let paragraphs):
+                    MarkdownParagraphRun(paragraphs: paragraphs)
+                case .block(let block):
+                    markdownBlock(block)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .onChange(of: text) { _, newValue in
             blocks = MarkdownBlockCache.blocks(for: newValue)
         }
+    }
+
+    /// Consecutive paragraphs share one Text so a drag selection can span
+    /// paragraph breaks; other block kinds keep their dedicated views.
+    private enum Item {
+        case paragraphs([String])
+        case block(MarkdownBlock)
+    }
+
+    private static func items(from blocks: [MarkdownBlock]) -> [Item] {
+        var items: [Item] = []
+        var run: [String] = []
+        func flushRun() {
+            if !run.isEmpty {
+                items.append(.paragraphs(run))
+                run.removeAll(keepingCapacity: true)
+            }
+        }
+        for block in blocks {
+            if case .paragraph(let text) = block {
+                run.append(text)
+            } else {
+                flushRun()
+                items.append(.block(block))
+            }
+        }
+        flushRun()
+        return items
     }
 
     @ViewBuilder
@@ -92,6 +125,36 @@ struct MarkdownTextView: View {
                 .frame(width: 3.5, height: 3.5)
                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] + 2 }
         }
+    }
+}
+
+/// One Text for consecutive paragraphs so selection can cross paragraph
+/// breaks. SwiftUI ignores paragraph spacing, so a 4 pt blank line keeps the
+/// gap near the old 10 pt rhythm; upgrade when a TextKit renderer lands.
+private struct MarkdownParagraphRun: View {
+    var paragraphs: [String]
+
+    private var merged: AttributedString {
+        var result = AttributedString()
+        for (index, paragraph) in paragraphs.enumerated() {
+            if index > 0 {
+                var separator = AttributedString("\n\n")
+                separator[AttributeScopes.SwiftUIAttributes.FontAttribute.self] = .system(size: 4)
+                result += separator
+            }
+            result += InlineMarkdown.attributed(paragraph)
+        }
+        return result
+    }
+
+    var body: some View {
+        Text(merged)
+            .font(Typo.body)
+            .foregroundStyle(Palette.ink)
+            .lineSpacing(4)
+            .textSelection(.enabled)
+            .tint(Palette.accent)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -617,7 +680,6 @@ struct LiveAssistantPreview: View {
                             .foregroundStyle(Palette.tertiaryInk)
                             .lineSpacing(4)
                             .lineLimit(4)
-                            .textSelection(.enabled)
                     }
                 }
                 .transition(.opacity)
@@ -626,7 +688,6 @@ struct LiveAssistantPreview: View {
             if !preview.text.isEmpty {
                 Text("\(Text(preview.text).font(.system(size: 14)).foregroundColor(Palette.ink))\(Text("▍").font(.system(size: 13, weight: .regular, design: .monospaced)).foregroundColor(Palette.accent.opacity(0.75)))")
                     .lineSpacing(4)
-                    .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else if let toolName = preview.toolName {

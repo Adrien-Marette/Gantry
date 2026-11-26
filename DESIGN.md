@@ -208,7 +208,7 @@ are sentence case.
   banners.
 - Animate state changes, not decoration. No springs, bounces, pulses, or
   infinite ambient motion.
-- Never animate per token. Streaming text is coalesced at ~30 fps before it
+- Never animate per token. Streaming text is coalesced at ~60 fps before it
   reaches the view.
 - Prefer the system `ProgressView` for live work; it respects Reduce Motion.
   Custom motion must also respect `accessibilityReduceMotion`.
